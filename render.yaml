@@ -1,0 +1,42 @@
+# Render Blueprint — https://docs.render.com/blueprint-spec
+# This file is used when connecting the repo to Render via "New > Blueprint Instance".
+# Required environment variables (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, JWT_SECRET,
+# NODE_ENV, and optionally CORS_ORIGIN) must be set manually in the Render dashboard.
+
+services:
+  - type: web
+    name: api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: NODE_ENV
+        value: "production"
+      - key: JWT_SECRET
+        sync: false # Must be set manually in dashboard
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      # Optional — set to your frontend domain (e.g. https://my-app.pages.dev)
+      # Defaults to "*" which allows all origins. Set explicitly in production.
+      - key: CORS_ORIGIN
+        sync: false
+      # Optional — JWT token duration. Default: 7d. Formats: 7d, 24h, 3600s
+      - key: JWT_EXPIRES_IN
+        sync: false
+      # Optional — minimum log level sent to Betterstack. Default: warn (production)
+      - key: LOG_LEVEL
+        sync: false
+      # Optional — Betterstack (Logtail) integration
+      - key: BETTERSTACK_SOURCE_TOKEN
+        sync: false
+      - key: BETTERSTACK_HOST
+        sync: false
+      # Optional — rate limiting. Defaults: 900000ms window, 10 max requests
+      - key: RATE_LIMIT_WINDOW_MS
+        sync: false
+      - key: RATE_LIMIT_MAX
+        sync: false

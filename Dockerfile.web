@@ -1,0 +1,21 @@
+FROM oven/bun:1 AS build
+WORKDIR /app
+
+# Install dependencies
+COPY package.json bun.lock ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/frontend/package.json ./apps/frontend/
+RUN bun install --frozen-lockfile
+
+# Copy source
+COPY packages/shared ./packages/shared
+COPY apps/frontend ./apps/frontend
+
+# Build
+RUN bun run --filter frontend build
+
+# Serve with lightweight static server
+FROM nginx:alpine
+COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

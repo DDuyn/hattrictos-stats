@@ -1,0 +1,25 @@
+# Stage 1: install production dependencies only
+FROM oven/bun:1.3.0 AS deps
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
+RUN bun install --frozen-lockfile --production --ignore-scripts
+
+# Stage 2: minimal runtime image
+FROM oven/bun:1.3.0
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY packages/shared ./packages/shared
+COPY apps/backend/src ./apps/backend/src
+COPY apps/backend/package.json ./apps/backend/
+COPY package.json ./
+
+EXPOSE 3000
+
+CMD ["bun", "run", "apps/backend/src/index.ts"]
