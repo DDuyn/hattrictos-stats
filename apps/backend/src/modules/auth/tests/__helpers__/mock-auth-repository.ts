@@ -25,5 +25,8 @@ export function createMockAuthRepository(users: User[] = []): AuthRepository {
       byEmail.set(user.email, user);
       byId.set(user.id, user);
     },
+    async updatePasswordHash(_id, _hash) {
+      // no-op stub for unit tests
+    },
   };
 }

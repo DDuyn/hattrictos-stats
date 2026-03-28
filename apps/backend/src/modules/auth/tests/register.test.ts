@@ -31,6 +31,7 @@ describe('Register', () => {
       email: 'test@example.com',
       name: 'Existing',
       passwordHash: 'hash',
+      role: null,
       createdAt: new Date(),
     });
     const register = createRegister(createMockAuthRepository([existingUser]), JWT_SECRET);

@@ -7,6 +7,7 @@ export interface AuthRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   create(user: User): Promise<void>;
+  updatePasswordHash(id: string, passwordHash: string): Promise<void>;
 }
 
 export function createAuthRepository(db: DB): AuthRepository {
@@ -14,13 +15,13 @@ export function createAuthRepository(db: DB): AuthRepository {
     async findByEmail(email: string) {
       const row = await db.select().from(usersTable).where(eq(usersTable.email, email)).get();
       if (!row) return null;
-      return User.fromPersistence(row);
+      return User.fromPersistence({ ...row, role: row.role ?? null });
     },
 
     async findById(id: string) {
       const row = await db.select().from(usersTable).where(eq(usersTable.id, id)).get();
       if (!row) return null;
-      return User.fromPersistence(row);
+      return User.fromPersistence({ ...row, role: row.role ?? null });
     },
 
     async create(user: User) {
@@ -29,8 +30,16 @@ export function createAuthRepository(db: DB): AuthRepository {
         email: user.email,
         name: user.name,
         passwordHash: user.passwordHash,
+        role: user.role ?? undefined,
         createdAt: user.createdAt,
       });
+    },
+
+    async updatePasswordHash(id: string, passwordHash: string) {
+      await db
+        .update(usersTable)
+        .set({ passwordHash })
+        .where(eq(usersTable.id, id));
     },
   };
 }

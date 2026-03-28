@@ -17,19 +17,23 @@ export default function Profile() {
           when={ctrl.user()}
           fallback={<p class="text-gray-400 text-sm">No user data available.</p>}
         >
-          {(user) => (
+          {(u) => (
             <div class="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
               <div class="px-5 py-4">
                 <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Name</p>
-                <p class="text-sm font-medium text-gray-900">{user().name}</p>
+                <p class="text-sm font-medium text-gray-900">{u().name}</p>
               </div>
               <div class="px-5 py-4">
                 <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Email</p>
-                <p class="text-sm font-medium text-gray-900">{user().email}</p>
+                <p class="text-sm font-medium text-gray-900">{u().email}</p>
+              </div>
+              <div class="px-5 py-4">
+                <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Role</p>
+                <p class="text-sm font-medium text-gray-900">{u().role ?? '—'}</p>
               </div>
               <div class="px-5 py-4">
                 <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">User ID</p>
-                <p class="text-sm font-mono text-gray-500">{user().id}</p>
+                <p class="text-sm font-mono text-gray-500">{u().id}</p>
               </div>
             </div>
           )}

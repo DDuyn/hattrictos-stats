@@ -9,18 +9,61 @@ type JwtEnv = {
   };
 };
 
-export const jwtGuard = createMiddleware<JwtEnv>(async (c, next) => {
-  const header = c.req.header('Authorization');
-  if (!header || !header.startsWith('Bearer ')) {
-    return c.json({ code: 'UNAUTHORIZED', message: 'Missing or invalid token' }, 401);
-  }
-
-  const token = header.slice(7);
+async function extractAndVerifyJwt(authHeader: string | undefined): Promise<JwtPayload | null> {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
   try {
     const payload = await verify(token, env.JWT_SECRET, 'HS256');
-    c.set('jwtPayload', payload as unknown as JwtPayload);
-    await next();
+    return payload as unknown as JwtPayload;
   } catch {
-    return c.json({ code: 'UNAUTHORIZED', message: 'Invalid or expired token' }, 401);
+    return null;
   }
+}
+
+export const jwtGuard = createMiddleware<JwtEnv>(async (c, next) => {
+  const payload = await extractAndVerifyJwt(c.req.header('Authorization'));
+  if (!payload) {
+    return c.json({ code: 'UNAUTHORIZED', message: 'Missing or invalid token' }, 401);
+  }
+  c.set('jwtPayload', payload);
+  await next();
+});
+
+/** Only `owner` */
+export const ownerGuard = createMiddleware<JwtEnv>(async (c, next) => {
+  const payload = await extractAndVerifyJwt(c.req.header('Authorization'));
+  if (!payload) {
+    return c.json({ code: 'UNAUTHORIZED', message: 'Missing or invalid token' }, 401);
+  }
+  if (payload.role !== 'owner') {
+    return c.json({ code: 'FORBIDDEN', message: 'Insufficient permissions' }, 403);
+  }
+  c.set('jwtPayload', payload);
+  await next();
+});
+
+/** `owner` or `co_owner` */
+export const ownerOrCoOwnerGuard = createMiddleware<JwtEnv>(async (c, next) => {
+  const payload = await extractAndVerifyJwt(c.req.header('Authorization'));
+  if (!payload) {
+    return c.json({ code: 'UNAUTHORIZED', message: 'Missing or invalid token' }, 401);
+  }
+  if (payload.role !== 'owner' && payload.role !== 'co_owner') {
+    return c.json({ code: 'FORBIDDEN', message: 'Insufficient permissions' }, 403);
+  }
+  c.set('jwtPayload', payload);
+  await next();
+});
+
+/** `owner`, `co_owner`, or `admin` */
+export const staffGuard = createMiddleware<JwtEnv>(async (c, next) => {
+  const payload = await extractAndVerifyJwt(c.req.header('Authorization'));
+  if (!payload) {
+    return c.json({ code: 'UNAUTHORIZED', message: 'Missing or invalid token' }, 401);
+  }
+  if (payload.role !== 'owner' && payload.role !== 'co_owner' && payload.role !== 'admin') {
+    return c.json({ code: 'FORBIDDEN', message: 'Insufficient permissions' }, 403);
+  }
+  c.set('jwtPayload', payload);
+  await next();
 });

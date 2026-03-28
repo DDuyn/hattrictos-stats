@@ -36,7 +36,7 @@ export async function request<T>(
 
   if (response.status === 401) {
     clearToken();
-    window.location.href = '/login';
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     // Return a never-resolving promise so calling code does not continue
     return new Promise(() => {});
   }

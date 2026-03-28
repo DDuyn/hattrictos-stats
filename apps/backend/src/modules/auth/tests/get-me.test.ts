@@ -9,6 +9,7 @@ const mockUser = User.fromPersistence({
   email: 'test@example.com',
   name: 'Test User',
   passwordHash: 'hash',
+  role: null,
   createdAt: new Date(),
 });
 

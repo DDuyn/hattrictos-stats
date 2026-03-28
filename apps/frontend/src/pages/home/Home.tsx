@@ -1,12 +1,7 @@
-import { onMount } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
 import { createHomeCtrl } from './home.ctrl';
 
 export default function Home() {
-  const navigate = useNavigate();
-  const ctrl = createHomeCtrl(navigate);
-
-  onMount(() => ctrl.init());
+  const _ctrl = createHomeCtrl();
 
   return (
     <>

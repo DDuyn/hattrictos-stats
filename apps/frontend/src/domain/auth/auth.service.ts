@@ -1,6 +1,6 @@
 import { type AuthResponse, type AppError, ok, internalError } from '@hattrictos-stats/shared';
 import { type FieldErrors } from '../validation';
-import { validateLoginInput, validateRegisterInput } from './auth.validations';
+import { validateLoginInput } from './auth.validations';
 import { authApi, type UserProfile } from './auth.api';
 
 export type { UserProfile };
@@ -19,23 +19,6 @@ export async function login(
 
   try {
     const response = await authApi.login(validation.value);
-    return ok(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Something went wrong';
-    return { ok: false, error: internalError(message) };
-  }
-}
-
-export async function register(
-  email: string,
-  password: string,
-  name: string,
-): Promise<AuthServiceResult<AuthResponse>> {
-  const validation = validateRegisterInput(email, password, name);
-  if (!validation.ok) return validation;
-
-  try {
-    const response = await authApi.register(validation.value);
     return ok(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Something went wrong';

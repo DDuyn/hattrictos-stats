@@ -23,7 +23,7 @@ async function loadDotEnvFromRoot() {
 
 await loadDotEnvFromRoot();
 
-const localDbDefault = `file:${resolve(import.meta.dir, "../../../local.db")}`;
+const localDbDefault = `file:${resolve(import.meta.dir, "../../local.db")}`;
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -34,11 +34,31 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1),
   JWT_EXPIRES_IN: z.string().default("7d"),
   CORS_ORIGIN: z.string().default("*"),
+  REGISTRATION_ENABLED: z
+    .string()
+    .transform((v) => v === "true")
+    .default("false"),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(10),
   BETTERSTACK_SOURCE_TOKEN: z.string().optional(),
   BETTERSTACK_HOST: z.string().default("in.logs.betterstack.com"),
   LOG_LEVEL: z.enum(["info", "warn", "error"]).default(isDev ? "info" : "warn"),
+  // CHPP — Hattrick API (https://chpp.hattrick.org)
+  APP_URL: z.string().url().default("http://localhost:3000"),
+  CHPP_CONSUMER_KEY: z.string().min(1).optional(),
+  CHPP_CONSUMER_SECRET: z.string().min(1).optional(),
+  // Access token — stored in DB after OAuth flow; these are a fallback/override
+  CHPP_ACCESS_TOKEN: z.string().optional(),
+  CHPP_ACCESS_TOKEN_SECRET: z.string().optional(),
+  // AES-256-GCM key for encrypting CHPP tokens in DB (64 hex chars = 32 bytes)
+  // Generate with: openssl rand -hex 32
+  CHPP_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, {
+      message:
+        "CHPP_ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Generate with: openssl rand -hex 32",
+    })
+    .optional(),
 });
 
 function loadEnv() {

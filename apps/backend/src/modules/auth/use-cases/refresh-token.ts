@@ -24,7 +24,7 @@ export function createRefreshToken(
     }
 
     const exp = Math.floor(Date.now() / 1000) + parseDurationToSeconds(expiresIn);
-    const token = await sign({ userId: user.id, email: user.email, exp }, jwtSecret);
+    const token = await sign({ userId: user.id, email: user.email, role: user.role, exp }, jwtSecret);
 
     return ok({ token, user: user.toResponse() });
   };

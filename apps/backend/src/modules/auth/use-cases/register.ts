@@ -38,6 +38,7 @@ export function createRegister(
       email: input.email,
       name: input.name,
       passwordHash,
+      role: input.role ?? null,
       createdAt: new Date(),
     });
 
@@ -47,7 +48,7 @@ export function createRegister(
     await repository.create(user);
 
     const exp = Math.floor(Date.now() / 1000) + parseDurationToSeconds(expiresIn);
-    const token = await sign({ userId: user.id, email: user.email, exp }, jwtSecret);
+    const token = await sign({ userId: user.id, email: user.email, role: user.role, exp }, jwtSecret);
 
     log?.info('user_registered', { userId: user.id, email: user.email });
 

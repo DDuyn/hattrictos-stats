@@ -8,7 +8,9 @@ const STATUS_MAP: Record<ErrorCode, ContentfulStatusCode> = {
   NOT_FOUND: 404,
   CONFLICT: 409,
   RATE_LIMITED: 429,
+  CHPP_RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
+  CHPP_ERROR: 502,
 };
 
 export function errorToStatus(code: ErrorCode): ContentfulStatusCode {

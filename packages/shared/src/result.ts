@@ -36,7 +36,9 @@ export type ErrorCode =
   | 'UNAUTHORIZED'
   | 'CONFLICT'
   | 'RATE_LIMITED'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'CHPP_ERROR'
+  | 'CHPP_RATE_LIMITED';
 
 export interface AppError {
   code: ErrorCode;
@@ -65,4 +67,12 @@ export function rateLimitedError(message: string): AppError {
 
 export function internalError(message: string): AppError {
   return { code: 'INTERNAL_ERROR', message };
+}
+
+export function chppError(message: string): AppError {
+  return { code: 'CHPP_ERROR', message };
+}
+
+export function chppRateLimitedError(message: string): AppError {
+  return { code: 'CHPP_RATE_LIMITED', message };
 }

@@ -19,6 +19,7 @@ export function AppLayout(props: ParentProps) {
     <div class="min-h-screen bg-gray-50 font-sans">
       <Navbar />
       <Sidebar items={NAV_ITEMS} />
+
       <main class="pt-14 pl-16 transition-all duration-200">
         <div class="max-w-4xl mx-auto px-6 py-10">
           {props.children}

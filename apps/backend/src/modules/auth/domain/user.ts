@@ -1,11 +1,12 @@
 import { type Result, ok, validationError } from '@hattrictos-stats/shared';
-import type { AppError } from '@hattrictos-stats/shared';
+import type { AppError, UserRole } from '@hattrictos-stats/shared';
 
 export interface UserProps {
   id: string;
   email: string;
   name: string;
   passwordHash: string;
+  role: UserRole | null;
   createdAt: Date;
 }
 
@@ -14,6 +15,7 @@ export class User {
   readonly email: string;
   readonly name: string;
   readonly passwordHash: string;
+  readonly role: UserRole | null;
   readonly createdAt: Date;
 
   private constructor(props: UserProps) {
@@ -21,6 +23,7 @@ export class User {
     this.email = props.email;
     this.name = props.name;
     this.passwordHash = props.passwordHash;
+    this.role = props.role;
     this.createdAt = props.createdAt;
   }
 
@@ -43,6 +46,7 @@ export class User {
       id: this.id,
       email: this.email,
       name: this.name,
+      role: this.role,
     };
   }
 }

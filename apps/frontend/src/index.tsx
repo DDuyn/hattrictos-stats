@@ -6,7 +6,6 @@ import { AuthProvider } from './context/auth.context';
 import { ToastProvider } from './context/toast.context';
 import Layout from './components/Layout';
 import Home from './pages/home/Home';
-import Login from './pages/login/Login';
 import Profile from './pages/profile/Profile';
 
 const root = document.getElementById('root');
@@ -18,9 +17,8 @@ render(
       <AuthProvider>
         <Router root={Layout}>
           <Route path="/" component={Home} />
-          <Route path="/login" component={Login} />
           <Route path="/profile" component={Profile} />
-          </Router>
+        </Router>
       </AuthProvider>
     </ToastProvider>
   ),
