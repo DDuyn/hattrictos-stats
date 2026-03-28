@@ -1,4 +1,4 @@
-import type { ErrorCode } from "@repo/shared";
+import type { ErrorCode } from "@hattrictos-stats/shared";
 import type { Context, Next } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 

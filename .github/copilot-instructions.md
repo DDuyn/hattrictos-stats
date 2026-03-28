@@ -1,10 +1,31 @@
-# Copilot Instructions — bun-monorepo-template
+# Copilot Instructions — hattrictos-stats
 
 Responder siempre en **castellano**.
+
+## Qué es este proyecto
+
+Web pública de consulta de estadísticas históricas de ligas privadas de Hattrick Arena. Los datos provienen de la API CHPP de Hattrick. Los visitantes no necesitan login. Solo los admins sincronizan datos vía OAuth 1.0a.
 
 ## Stack
 
 Bun monorepo · Hono (backend) · SolidJS + Vite + TailwindCSS v4 (frontend) · Turso + Drizzle ORM · Zod · JWT auth · Biome (lint/format)
+
+## CHPP — Reglas estrictas
+
+### NUNCA
+- Web scraping contra hattrick.org
+- Mostrar datos privados de equipos ajenos (habilidades, finanzas)
+- Llamar a la API CHPP sin cachear en BD
+- Hardcodear tokens OAuth en el código
+- Usar OAuth 2.0 (CHPP usa 1.0a)
+- Ignorar errores `429` de la API
+
+### SIEMPRE
+- Usar solo la API CHPP para datos de Hattrick
+- Cachear XML de CHPP en BD antes de procesar
+- Incluir atribución "Powered by CHPP" en el frontend
+- Todas las llamadas a CHPP desde el backend, nunca desde el frontend
+- Ver `docs/chpp-reglas.md` ante cualquier duda
 
 ## Arquitectura backend
 
@@ -12,7 +33,7 @@ Bun monorepo · Hono (backend) · SolidJS + Vite + TailwindCSS v4 (frontend) · 
 
 ```ts
 // CORRECTO
-import { ok, err } from '@repo/shared';
+import { ok, err } from '@hattrictos-stats/shared';
 return err(appError('NOT_FOUND', 'Not found'));
 
 // INCORRECTO
@@ -22,12 +43,11 @@ throw new Error('Not found');
 ### Use-cases: factory function, un fichero por operación
 
 ```ts
-export function createGetItem(repo: ItemsRepository): GetItem {
-  return async (id, userId) => {
-    const item = await repo.findById(id);
-    if (!item) return err(appError('NOT_FOUND', 'Item not found'));
-    if (item.userId !== userId) return err(appError('UNAUTHORIZED', 'Forbidden'));
-    return ok(item.toResponse());
+export function createGetMatch(repo: MatchesRepository): GetMatch {
+  return async (id) => {
+    const match = await repo.findById(id);
+    if (!match) return err(appError('NOT_FOUND', 'Match not found'));
+    return ok(match.toResponse());
   };
 }
 ```
@@ -54,14 +74,14 @@ Vista (.tsx) → Controlador (.ctrl.ts) → Service (.service.ts) → api.ts + v
 
 | Qué | Convención |
 |-----|-----------|
-| Módulos/tablas | plural (`user-profiles`, `userProfilesTable`) |
-| Entidades/use-cases | singular (`UserProfile`, `createUserProfile`) |
-| Componentes Solid | PascalCase (`UserProfile.tsx`) |
+| Módulos/tablas | plural (`matches`, `matchesTable`) |
+| Entidades/use-cases | singular (`Match`, `createMatch`) |
+| Componentes Solid | PascalCase (`StandingsTable.tsx`) |
 | Ficheros | kebab-case |
 
 ## Imports
 
-- Package compartido: `@repo/shared` (template) / `@{projectName}/shared` (proyectos clonados)
+- Package compartido: `@hattrictos-stats/shared`
 - No importar entre `apps/backend` ↔ `apps/frontend` directamente
 
 ## Checks obligatorios antes de commit

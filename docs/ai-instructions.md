@@ -141,9 +141,64 @@ No todos los módulos necesitan todas las capas. Si no hay lógica de negocio (e
 
 ---
 
+## CHPP (API de Hattrick)
+
+Este proyecto consume datos de la **API CHPP de Hattrick**. Estas reglas son **no negociables**.
+
+### NUNCA hacer
+
+- Implementar web scraping contra hattrick.org o cualquier subdominio
+- Acceder a datos privados de equipos ajenos: habilidades de jugadores, finanzas, órdenes de entrenamiento
+- Hacer llamadas a la API CHPP sin cachear el resultado en BD (excepto durante el flujo OAuth)
+- Almacenar `consumer_key`, `consumer_secret`, `access_token` o `access_token_secret` en el código fuente o en archivos comiteados
+- Usar OAuth 2.0 — CHPP usa OAuth 1.0a exclusivamente
+- Ignorar errores `429` de la API — siempre implementar backoff exponencial
+- Hacer fetch directo a hattrick.org desde el frontend — todas las llamadas a CHPP son desde el backend
+
+### SIEMPRE hacer
+
+- Usar la API CHPP para obtener datos (nunca scraping, nunca fetch manual a HTML de HT)
+- Cachear respuestas en BD local antes de devolver datos al frontend
+- Parsear las respuestas XML de CHPP a objetos TypeScript antes de procesar
+- Incluir atribución "Powered by CHPP" visible en el frontend
+- Manejar el error `401` de la API: marcar token como inactivo y notificar al admin
+- Consultar `docs/chpp-reglas.md` ante cualquier duda sobre qué datos se pueden mostrar
+- Verificar el elemento `<Error>` en cada respuesta XML antes de procesarla (CHPP puede devolver `200` con error interno)
+
+### Datos que se pueden mostrar de equipos ajenos
+
+- Resultados de partidos
+- Goles y eventos de partido (goleadores, tarjetas, lesiones)
+- Alineaciones de partidos ya jugados
+- Nombre, ID y datos básicos de jugadores
+- Nombre y datos públicos del equipo
+
+### Datos que NUNCA se pueden mostrar de equipos ajenos
+
+- Habilidades (skills) de jugadores
+- Finanzas del club
+- Cualquier dato marcado como privado por la API
+
+### Arquitectura de sincronización
+
+```
+Admin OAuth → Backend job → CHPP API → Parsear XML → Guardar en BD → API REST → Frontend
+```
+
+Los visitantes nunca interactúan con CHPP directamente. Solo el backend backend accede a la API.
+
+### Documentación CHPP del proyecto
+
+- `docs/chpp-reglas.md` — Reglas completas y modelo de acceso
+- `docs/chpp-api-endpoints.md` — Endpoints, parámetros y estructura XML
+- `docs/chpp-oauth.md` — Flujo OAuth 1.0a y gestión de tokens
+- `docs/chpp-match-events.md` — Tipos de eventos para parsear goles, tarjetas, etc.
+
+---
+
 ## Contexto adicional
 
-- Leer `docs/project-context.md` para entender la estructura completa, el stack y las decisiones técnicas tomadas
+- Leer `docs/project-context.md` para entender qué es hattrictos-stats, su propósito y arquitectura
 - Leer `docs/adding-a-feature.md` para la guía paso a paso de crear un módulo nuevo
 - Leer `docs/result-pattern.md` para entender el patrón Result en detalle
 - Leer `docs/testing.md` para las convenciones de testing

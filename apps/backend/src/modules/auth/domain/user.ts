@@ -1,5 +1,5 @@
-import { type Result, ok, validationError } from '@repo/shared';
-import type { AppError } from '@repo/shared';
+import { type Result, ok, validationError } from '@hattrictos-stats/shared';
+import type { AppError } from '@hattrictos-stats/shared';
 
 export interface UserProps {
   id: string;

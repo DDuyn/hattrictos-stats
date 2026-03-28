@@ -1,4 +1,4 @@
-import { type Result, type AppError, type AuthResponse, ok, err, notFoundError } from '@repo/shared';
+import { type Result, type AppError, type AuthResponse, ok, err, notFoundError } from '@hattrictos-stats/shared';
 import type { AuthRepository } from '../infrastructure/auth.repository';
 
 export type UserResponse = AuthResponse['user'];

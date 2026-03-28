@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { loginInputSchema, registerInputSchema, type JwtPayload } from '@repo/shared';
+import { loginInputSchema, registerInputSchema, type JwtPayload } from '@hattrictos-stats/shared';
 import { db } from '../../infrastructure/db/client';
 import { env } from '../../config/env';
 import { jwtGuard } from '../../middleware/jwt';

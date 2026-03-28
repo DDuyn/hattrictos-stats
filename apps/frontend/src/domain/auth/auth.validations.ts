@@ -3,7 +3,7 @@ import {
   registerInputSchema,
   type LoginInput,
   type RegisterInput,
-} from '@repo/shared';
+} from '@hattrictos-stats/shared';
 import { type ValidationResult, zodIssuesToFieldErrors } from '../validation';
 
 export function validateLoginInput(email: string, password: string): ValidationResult<LoginInput> {

@@ -21,17 +21,6 @@ export {
 } from './schemas/auth.schema';
 
 export {
-  itemStatusSchema,
-  createItemInputSchema,
-  updateItemInputSchema,
-  itemResponseSchema,
-  type ItemStatus,
-  type CreateItemInput,
-  type UpdateItemInput,
-  type ItemResponse,
-} from './schemas/item.schema';
-
-export {
   idParamSchema,
   paginationSchema,
   type IdParam,

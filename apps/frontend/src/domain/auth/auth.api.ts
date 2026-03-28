@@ -1,5 +1,5 @@
 import { request } from '../../lib/api-client';
-import type { AuthResponse, LoginInput, RegisterInput } from '@repo/shared';
+import type { AuthResponse, LoginInput, RegisterInput } from '@hattrictos-stats/shared';
 
 export type UserProfile = AuthResponse['user'];
 

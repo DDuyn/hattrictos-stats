@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { isOk, isErr } from '@repo/shared';
+import { isOk, isErr } from '@hattrictos-stats/shared';
 import { User } from '../domain/user';
 
 describe('User domain', () => {

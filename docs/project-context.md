@@ -1,14 +1,52 @@
 # Contexto del Proyecto
 
-Documento de referencia para que cualquier modelo de IA entienda qué es este template, cómo está estructurado y qué decisiones se tomaron. **Este archivo NO es documentación para el usuario final**, es contexto persistente para sesiones de asistencia con IA.
+Documento de referencia para que cualquier modelo de IA entienda qué es este proyecto, cómo está estructurado y qué decisiones se tomaron. **Este archivo NO es documentación para el usuario final**, es contexto persistente para sesiones de asistencia con IA.
 
 ---
 
 ## Qué es
 
-Un **repositorio template** en GitHub para crear proyectos fullstack TypeScript con monorepo. Cada nuevo proyecto se crea desde este template y tiene su propia infraestructura (base de datos, backend, frontend).
+**hattrictos-stats** es una web pública de consulta de datos históricos de ligas privadas organizadas por una comunidad dentro de **Hattrick Arena** (la funcionalidad de torneos privados de Hattrick).
 
-**Repositorio:** `https://github.com/DDuyn/bun-monorepo-template`
+**Repositorio:** `https://github.com/DDuyn/hattrictos-stats`
+
+### Propósito
+
+La comunidad organiza ligas con varias divisiones usando Hattrick Arena. Hattrick no conserva el historial indefinidamente, por lo que esta app sincroniza y guarda:
+
+- Resultados históricos de partidos por temporada/división
+- Clasificaciones finales e intermedias
+- Estadísticas de goleadores
+- Head-to-head entre equipos
+- Equipos participantes por temporada
+
+### Modelo de acceso
+
+```
+Admin (cuenta HT) → OAuth 1.0a → Backend sincroniza desde CHPP → BD Turso
+                                                                      ↓
+                                                    Web pública de solo lectura (sin login)
+```
+
+- Los **visitantes** no necesitan cuenta de Hattrick ni hacer login.
+- Los **administradores** autorizan la app con sus cuentas de Hattrick vía OAuth 1.0a.
+- El backend usa el token de admin para sincronizar datos de la API CHPP.
+- La web muestra los datos históricos almacenados en BD local.
+
+### Fuente de datos: CHPP (API oficial de Hattrick)
+
+Todos los datos provienen exclusivamente de la **API CHPP** (Certified Hattrick Product Program). No se usa web scraping. Ver documentación específica:
+
+- `docs/chpp-reglas.md` — Reglas CHPP que aplican al proyecto (obligatorio leer antes de implementar cualquier cosa relacionada con datos de Hattrick)
+- `docs/chpp-api-endpoints.md` — Endpoints usados, parámetros y estructura de respuestas XML
+- `docs/chpp-oauth.md` — Flujo OAuth 1.0a para autenticación con CHPP
+- `docs/chpp-match-events.md` — Tipos de eventos de partido para parsear goles, tarjetas, etc.
+
+---
+
+## Qué es (origen técnico)
+
+Creado a partir del template `DDuyn/bun-monorepo-template`: monorepo fullstack TypeScript con Bun workspaces, Hono (backend), SolidJS + Vite (frontend) y Turso + Drizzle ORM (base de datos).
 
 ---
 

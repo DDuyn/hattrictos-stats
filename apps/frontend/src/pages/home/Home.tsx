@@ -9,9 +9,12 @@ export default function Home() {
   onMount(() => ctrl.init());
 
   return (
-    <div>
-      <h1 class="text-2xl font-semibold text-gray-900 mb-1">Home</h1>
-      <p class="text-sm text-gray-500">Welcome! Start building your app here.</p>
-    </div>
+    <>
+      <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-gray-900">Home</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Start building your app</p>
+      </div>
+      <p class="text-gray-600 text-sm">Welcome! Add your features here.</p>
+    </>
   );
 }

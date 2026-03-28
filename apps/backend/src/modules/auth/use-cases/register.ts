@@ -7,7 +7,7 @@ import {
   ok,
   err,
   conflictError,
-} from '@repo/shared';
+} from '@hattrictos-stats/shared';
 import type { RequestLogger } from '../../../middleware/logger';
 import { User } from '../domain/user';
 import type { AuthRepository } from '../infrastructure/auth.repository';

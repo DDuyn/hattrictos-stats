@@ -1,4 +1,4 @@
-import { type AuthResponse, type AppError, ok, internalError } from '@repo/shared';
+import { type AuthResponse, type AppError, ok, internalError } from '@hattrictos-stats/shared';
 import { type FieldErrors } from '../validation';
 import { validateLoginInput, validateRegisterInput } from './auth.validations';
 import { authApi, type UserProfile } from './auth.api';

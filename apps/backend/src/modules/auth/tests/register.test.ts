@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import { decode } from 'hono/jwt';
-import { isOk, isErr } from '@repo/shared';
+import { isOk, isErr } from '@hattrictos-stats/shared';
 import { User } from '../domain/user';
 import { createRegister } from '../use-cases/register';
 import { createMockAuthRepository } from './__helpers__/mock-auth-repository';

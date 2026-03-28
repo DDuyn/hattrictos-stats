@@ -1,6 +1,6 @@
 /**
  * Frontend-only validation types.
- * Per-field errors are a UI concern — AppError from @repo/shared remains unchanged.
+ * Per-field errors are a UI concern — AppError from @hattrictos-stats/shared remains unchanged.
  */
 
 /** Map of field name → error message for inline form validation. */

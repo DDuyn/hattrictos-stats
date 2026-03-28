@@ -1,19 +1,19 @@
 {
-  "name": "bun-monorepo-template",
+  "name": "hattrictos-stats",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
-    "dev:api": "bun run --filter backend dev",
-    "dev:web": "bun run --filter frontend dev",
+    "dev:api": "bun run --filter hattrictos-stats-api dev",
+    "dev:web": "bun run --filter hattrictos-stats-web dev",
     "test": "bun run --filter '*' test",
-    "test:api": "bun run --filter backend test",
+    "test:api": "bun run --filter hattrictos-stats-api test",
     "typecheck": "tsc --noEmit -p apps/backend/tsconfig.json && tsc --noEmit -p apps/frontend/tsconfig.json",
     "lint": "bunx biome check .",
     "lint:fix": "bunx biome check --write .",
     "build": "bun run --filter '*' build",
-    "db:generate": "bun run --filter backend db:generate",
-    "db:migrate": "bun run --filter backend db:migrate",
+    "db:generate": "bun run --filter hattrictos-stats-api db:generate",
+    "db:migrate": "bun run --filter hattrictos-stats-api db:migrate",
     "clean": "bun run scripts/clean-template.ts",
     "generate": "bun run scripts/generate-feature.ts",
     "arch-check": "bun run scripts/arch-check.ts",
@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "backend": "workspace:*",
+    "hattrictos-stats-api": "workspace:*",
     "lefthook": "^2.1.1"
   }
 }

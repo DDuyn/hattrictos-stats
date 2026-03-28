@@ -7,7 +7,7 @@ import {
   ok,
   err,
   unauthorizedError,
-} from '@repo/shared';
+} from '@hattrictos-stats/shared';
 import type { RequestLogger } from '../../../middleware/logger';
 import type { AuthRepository } from '../infrastructure/auth.repository';
 import { parseDurationToSeconds } from '../../../lib/duration';

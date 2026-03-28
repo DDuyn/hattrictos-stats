@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "hattrictos-stats-api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
-    "@repo/shared": "workspace:*",
+    "@hattrictos-stats/shared": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",
     "zod": "^3.24.2"

@@ -3,7 +3,9 @@ import type { Navigator } from '@solidjs/router';
 import { isAuthenticated } from '../../lib/api-client';
 
 export function createHomeCtrl(navigate: Navigator) {
-  const [state, setState] = createStore({ loading: true });
+  const [state, setState] = createStore({
+    loading: true,
+  });
 
   async function init() {
     if (!isAuthenticated()) {
@@ -13,5 +15,5 @@ export function createHomeCtrl(navigate: Navigator) {
     setState('loading', false);
   }
 
-  return { state, init };
+  return { state, setState, init };
 }

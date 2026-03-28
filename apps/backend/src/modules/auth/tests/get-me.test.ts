@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { isOk, isErr } from '@repo/shared';
+import { isOk, isErr } from '@hattrictos-stats/shared';
 import { User } from '../domain/user';
 import { createGetMe } from '../use-cases/get-me';
 import { createMockAuthRepository } from './__helpers__/mock-auth-repository';

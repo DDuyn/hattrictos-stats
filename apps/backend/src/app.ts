@@ -4,7 +4,6 @@ import { structuredLogger } from './middleware/logger';
 import { errorHandler } from './middleware/error-handler';
 import { healthApi } from './modules/health/health.api';
 import { authApi } from './modules/auth/auth.api';
-import { itemsApi } from './modules/items/items.api';
 import { env } from './config/env';
 
 export function createApp() {
@@ -28,7 +27,6 @@ export function createApp() {
   // Routes
   app.route('/api/health', healthApi);
   app.route('/api/auth', authApi);
-  app.route('/api/items', itemsApi);
 
   return app;
 }

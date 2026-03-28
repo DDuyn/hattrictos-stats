@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import { verify } from 'hono/jwt';
-import type { JwtPayload } from '@repo/shared';
+import type { JwtPayload } from '@hattrictos-stats/shared';
 import { env } from '../config/env';
 
 type JwtEnv = {
