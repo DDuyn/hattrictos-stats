@@ -1,12 +1,17 @@
 import type { Result, AppError } from '@hattrictos-stats/shared';
 import { ok, err, notFoundError } from '@hattrictos-stats/shared';
-import type { TournamentRepository, TopScorerRow } from '../infrastructure/tournaments.repository';
-import type { TournamentRow, TournamentStandingRow, TournamentMatchRow } from '../infrastructure/tournaments.table';
+import type {
+  TournamentRepository,
+  TopScorerRow,
+  StandingWithTeam,
+  MatchWithTeams,
+} from '../infrastructure/tournaments.repository';
+import type { TournamentRow } from '../infrastructure/tournaments.table';
 
 export interface TournamentDetail {
   tournament: TournamentRow;
-  standings: TournamentStandingRow[];
-  matches: TournamentMatchRow[];
+  standings: StandingWithTeam[];
+  matches: MatchWithTeams[];
   topScorers: TopScorerRow[];
 }
 
@@ -14,6 +19,7 @@ export type GetTournament = (id: string) => Promise<Result<TournamentDetail, App
 
 /**
  * Returns a tournament with its current standings, full match calendar, and top scorers.
+ * Team and player names are resolved via JOIN — no denormalized name columns.
  * Public — no auth required.
  */
 export function createGetTournament(

@@ -14,7 +14,6 @@ export interface UpsertPlayerInput {
   firstName: string;
   lastName: string;
   htTeamId: number;
-  teamName: string;
 }
 
 export interface PlayersRepository {
@@ -58,7 +57,7 @@ export function createPlayersRepository(db: DB): PlayersRepository {
           },
         });
 
-      await upsertTeamHistory(db, input.htPlayerId, input.htTeamId, input.teamName, now);
+      await upsertTeamHistory(db, input.htPlayerId, input.htTeamId, now);
 
       const row = await db
         .select()
@@ -82,12 +81,12 @@ export function createPlayersRepository(db: DB): PlayersRepository {
  * Upsert a player_team_history entry.
  * If a row already exists for (htPlayerId, htTeamId), update lastSeenAt.
  * Otherwise insert a new entry.
+ * Team name is resolved via JOIN when reading — not stored here.
  */
 async function upsertTeamHistory(
   db: DB,
   htPlayerId: number,
   htTeamId: number,
-  teamName: string,
   now: Date,
 ): Promise<void> {
   const existing = await db
@@ -104,7 +103,7 @@ async function upsertTeamHistory(
   if (existing) {
     await db
       .update(playerTeamHistoryTable)
-      .set({ lastSeenAt: now, teamName })
+      .set({ lastSeenAt: now })
       .where(
         and(
           eq(playerTeamHistoryTable.htPlayerId, htPlayerId),
@@ -116,7 +115,6 @@ async function upsertTeamHistory(
       id: randomUUID(),
       htPlayerId,
       htTeamId,
-      teamName,
       firstSeenAt: now,
       lastSeenAt: now,
     });

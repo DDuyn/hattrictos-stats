@@ -50,6 +50,7 @@ export interface TopScorer {
   htPlayerId: number;
   playerName: string;
   htTeamId: number;
+  teamName: string;
   goals: number;
 }
 

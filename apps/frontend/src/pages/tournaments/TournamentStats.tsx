@@ -91,6 +91,7 @@ export default function TournamentStats() {
                         <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
                           <th class="px-4 py-2.5 text-left w-8">#</th>
                           <th class="px-4 py-2.5 text-left">Jugador</th>
+                          <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
                           <th class="px-4 py-2.5 text-right font-semibold text-gray-600">Goles</th>
                         </tr>
                       </thead>
@@ -100,6 +101,7 @@ export default function TournamentStats() {
                             <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                               <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
                               <td class="px-4 py-2.5 font-medium text-gray-900">{scorer.playerName}</td>
+                              <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{scorer.teamName}</td>
                               <td class="px-4 py-2.5 text-right font-bold text-gray-900">{scorer.goals}</td>
                             </tr>
                           )}

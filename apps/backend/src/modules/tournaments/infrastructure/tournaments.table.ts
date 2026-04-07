@@ -45,8 +45,8 @@ export const tournamentStandingsTable = sqliteTable('tournament_standings', {
     .references(() => tournamentsTable.id, { onDelete: 'cascade' }),
   /** CHPP GroupId: 1 = A, 2 = B, etc. */
   groupId: integer('group_id').notNull(),
+  /** Hattrick team ID — JOIN with teams.ht_team_id to resolve name */
   htTeamId: integer('ht_team_id').notNull(),
-  teamName: text('team_name').notNull(),
   /** Position in the standings (1-based) */
   position: integer('position').notNull(),
   played: integer('played').notNull().default(0),
@@ -76,10 +76,10 @@ export const tournamentMatchesTable = sqliteTable('tournament_matches', {
   /** Round/matchday number */
   round: integer('round').notNull(),
   matchDate: text('match_date').notNull(),
+  /** Hattrick team ID — JOIN with teams.ht_team_id to resolve name */
   homeTeamId: integer('home_team_id').notNull(),
-  homeTeamName: text('home_team_name').notNull(),
+  /** Hattrick team ID — JOIN with teams.ht_team_id to resolve name */
   awayTeamId: integer('away_team_id').notNull(),
-  awayTeamName: text('away_team_name').notNull(),
   /** null = not yet played */
   homeGoals: integer('home_goals'),
   awayGoals: integer('away_goals'),
@@ -117,11 +117,12 @@ export const matchEventsTable = sqliteTable('match_events', {
   /** CHPP EventTypeID — 100-199 = goals */
   eventTypeId: integer('event_type_id').notNull(),
   minute: integer('minute').notNull(),
+  /** Hattrick player ID of the scorer — JOIN with players.ht_player_id */
   subjectPlayerId: integer('subject_player_id'),
-  subjectPlayerName: text('subject_player_name'),
+  /** Hattrick team ID of the scorer */
   subjectTeamId: integer('subject_team_id'),
+  /** Hattrick player ID of the assist provider — JOIN with players.ht_player_id */
   objectPlayerId: integer('object_player_id'),
-  objectPlayerName: text('object_player_name'),
 });
 
 export type MatchEventRow = typeof matchEventsTable.$inferSelect;
@@ -145,8 +146,9 @@ export const matchAppearancesTable = sqliteTable('match_appearances', {
   tournamentId: text('tournament_id')
     .notNull()
     .references(() => tournamentsTable.id, { onDelete: 'cascade' }),
+  /** Hattrick player ID — JOIN with players.ht_player_id to resolve name */
   htPlayerId: integer('ht_player_id').notNull(),
-  playerName: text('player_name').notNull(),
+  /** Hattrick team ID — JOIN with teams.ht_team_id to resolve name */
   htTeamId: integer('ht_team_id').notNull(),
   /** CHPP RoleID: 100=GK, 101-113=field positions, 114-118=substitutes */
   roleId: integer('role_id').notNull(),

@@ -48,11 +48,12 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Parses the `tournamentleaguetables` CHPP response into standings rows.
+ * Also returns a teamNames map (htTeamId → name) for use in Phase 2 team upserts.
  */
 export function parseStandings(
   tournamentId: string,
   raw: unknown,
-): NewTournamentStandingRow[] {
+): { rows: NewTournamentStandingRow[]; teamNames: Map<number, string> } {
   const root = raw as Record<string, unknown>;
   const htData = (root['HattrickData'] ?? root) as Record<string, unknown>;
   const wrapper =
@@ -60,10 +61,11 @@ export function parseStandings(
   const rawTables =
     wrapper['TournamentLeagueTable'] ?? wrapper['tournamentLeagueTable'];
 
-  if (!rawTables) return [];
+  if (!rawTables) return { rows: [], teamNames: new Map() };
 
   const tables = toArray<Record<string, unknown>>(rawTables);
   const rows: NewTournamentStandingRow[] = [];
+  const teamNames = new Map<number, string>();
 
   for (const table of tables) {
     const groupId = getNum(table, 'GroupId', 'groupId') || 1;
@@ -79,12 +81,14 @@ export function parseStandings(
       const htTeamId = getNum(team, 'TeamID', 'teamID', 'teamId');
       if (isNaN(htTeamId)) continue;
 
+      const name = getStr(team, 'TeamName', 'teamName') || `Team ${htTeamId}`;
+      teamNames.set(htTeamId, name);
+
       rows.push({
         id: randomUUID(),
         tournamentId,
         groupId,
         htTeamId,
-        teamName: getStr(team, 'TeamName', 'teamName') || `Team ${htTeamId}`,
         position: getNum(team, 'Position', 'position') || rows.length + 1,
         played: getNum(team, 'GamesPlayed', 'gamesPlayed', 'Matches', 'matches') || 0,
         won: getNum(team, 'Won', 'won') || 0,
@@ -97,7 +101,7 @@ export function parseStandings(
     }
   }
 
-  return rows;
+  return { rows, teamNames };
 }
 
 // ─── Matches parser ───────────────────────────────────────────────────────────
@@ -142,9 +146,7 @@ export function parseMatches(
       round: getNum(m, 'MatchRound', 'matchRound') || 0,
       matchDate: getStr(m, 'MatchDate', 'matchDate') || '',
       homeTeamId,
-      homeTeamName: getStr(m, 'HomeTeamName', 'homeTeamName') || `Team ${homeTeamId}`,
       awayTeamId,
-      awayTeamName: getStr(m, 'AwayTeamName', 'awayTeamName') || `Team ${awayTeamId}`,
       homeGoals: isFinished && !isNaN(rawHomeGoals) ? rawHomeGoals : null,
       awayGoals: isFinished && !isNaN(rawAwayGoals) ? rawAwayGoals : null,
       status,
@@ -194,9 +196,6 @@ export function parseMatchEvents(
     const subjectTeamId = getNum(ev, 'SubjectTeamID', 'subjectTeamId', 'SubjectTeamID');
     const objectPlayerId = getNum(ev, 'ObjectPlayerID', 'objectPlayerId', 'ObjectPlayerID');
 
-    // Build player name from EventText is unreliable — we use PlayerID as key,
-    // and resolve name from players table or from the name stored during matchlineup sync.
-    // For now we store the IDs; names are enriched via player upsert in the lineup step.
     rows.push({
       id: randomUUID(),
       matchId,
@@ -204,10 +203,8 @@ export function parseMatchEvents(
       eventTypeId,
       minute: isNaN(minute) ? 0 : minute,
       subjectPlayerId: isNaN(subjectPlayerId) ? null : subjectPlayerId,
-      subjectPlayerName: null, // enriched after player upsert
       subjectTeamId: isNaN(subjectTeamId) ? null : subjectTeamId,
       objectPlayerId: isNaN(objectPlayerId) ? null : objectPlayerId,
-      objectPlayerName: null,
     });
   }
 
@@ -223,7 +220,6 @@ interface ParsedLineupResult {
     firstName: string;
     lastName: string;
     htTeamId: number;
-    teamName: string;
   }>;
 }
 
@@ -252,7 +248,6 @@ export function parseMatchLineup(
   if (!teamSection) return { appearances: [], players: [] };
 
   const htTeamId = getNum(teamSection, 'TeamID', 'teamId', 'TeamId');
-  const teamName = getStr(teamSection, 'TeamName', 'teamName');
 
   // ── Starting lineup (who started) ───────────────────────────────────────────
   const startingWrapper = (teamSection['StartingLineup'] ?? teamSection['startingLineup']) as
@@ -333,7 +328,6 @@ export function parseMatchLineup(
       matchId,
       tournamentId,
       htPlayerId,
-      playerName: `${firstName} ${lastName}`.trim() || `Player ${htPlayerId}`,
       htTeamId: isNaN(htTeamId) ? 0 : htTeamId,
       roleId: isNaN(roleId) ? 0 : roleId,
       behaviour: isNaN(behaviour) ? 0 : behaviour,
@@ -347,7 +341,6 @@ export function parseMatchLineup(
       firstName,
       lastName,
       htTeamId: isNaN(htTeamId) ? 0 : htTeamId,
-      teamName,
     });
   }
 
@@ -371,7 +364,6 @@ export function parseMatchLineup(
       matchId,
       tournamentId,
       htPlayerId,
-      playerName: `${firstName} ${lastName}`.trim() || `Player ${htPlayerId}`,
       htTeamId: isNaN(htTeamId) ? 0 : htTeamId,
       roleId: subInfo.roleId,
       behaviour: subInfo.behaviour,
@@ -385,7 +377,6 @@ export function parseMatchLineup(
       firstName,
       lastName,
       htTeamId: isNaN(htTeamId) ? 0 : htTeamId,
-      teamName,
     });
   }
 
@@ -456,7 +447,7 @@ export function createSyncTournament(
       });
     }
 
-    const standingRows = parseStandings(tournamentId, tableResult.value);
+    const { rows: standingRows, teamNames } = parseStandings(tournamentId, tableResult.value);
     const matchRows = parseMatches(tournamentId, fixturesResult.value);
 
     await Promise.all([
@@ -467,7 +458,7 @@ export function createSyncTournament(
     // ── Phase 2: Upsert teams from standings ─────────────────────────────────
 
     const teamUpserts = standingRows.map((row) =>
-      teamsRepository.upsertTeam({ htTeamId: row.htTeamId, name: row.teamName }),
+      teamsRepository.upsertTeam({ htTeamId: row.htTeamId, name: teamNames.get(row.htTeamId) ?? `Team ${row.htTeamId}` }),
     );
     await Promise.all(teamUpserts);
     await teamsRepository.replaceTeamSeasons(
@@ -525,26 +516,6 @@ export function createSyncTournament(
       const allAppearances = [...homeLineup.appearances, ...awayLineup.appearances];
       const allPlayers = [...homeLineup.players, ...awayLineup.players];
 
-      // Build player name map from lineup data (playerId → name)
-      const playerNameMap = new Map<number, string>();
-      for (const p of allPlayers) {
-        const fullName = `${p.firstName} ${p.lastName}`.trim();
-        if (fullName) playerNameMap.set(p.htPlayerId, fullName);
-      }
-
-      // Enrich event rows with player names from lineup
-      const enrichedEvents = eventRows.map((ev) => ({
-        ...ev,
-        subjectPlayerName:
-          ev.subjectPlayerId !== null
-            ? (playerNameMap.get(ev.subjectPlayerId as number) ?? null)
-            : null,
-        objectPlayerName:
-          ev.objectPlayerId !== null
-            ? (playerNameMap.get(ev.objectPlayerId as number) ?? null)
-            : null,
-      }));
-
       // Upsert players encountered in this match
       await Promise.all(
         allPlayers.map((p) =>
@@ -553,14 +524,13 @@ export function createSyncTournament(
             firstName: p.firstName,
             lastName: p.lastName,
             htTeamId: p.htTeamId,
-            teamName: p.teamName,
           }),
         ),
       );
 
       // Persist events + appearances
       await Promise.all([
-        tournamentRepository.replaceMatchEvents(match.id, enrichedEvents),
+        tournamentRepository.replaceMatchEvents(match.id, eventRows),
         tournamentRepository.replaceMatchAppearances(match.id, allAppearances),
       ]);
 

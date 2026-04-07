@@ -25,8 +25,8 @@ export type NewPlayerRow = typeof playersTable.$inferInsert;
 export const playerTeamHistoryTable = sqliteTable('player_team_history', {
   id: text('id').primaryKey(),
   htPlayerId: integer('ht_player_id').notNull(),
+  /** Hattrick team ID — JOIN with teams.ht_team_id to resolve name */
   htTeamId: integer('ht_team_id').notNull(),
-  teamName: text('team_name').notNull(),
   firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }).notNull(),
   lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull(),
 });

@@ -17,13 +17,39 @@ import {
   type NewMatchEventRow,
   type NewMatchAppearanceRow,
 } from './tournaments.table';
+import { teamsTable } from '../../teams/infrastructure/teams.table';
+import { playersTable } from '../../players/infrastructure/players.table';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+/** Standing row augmented with team name resolved via JOIN */
+export interface StandingWithTeam extends Omit<TournamentStandingRow, never> {
+  teamName: string;
+}
+
+/** Match row augmented with team names resolved via JOIN */
+export interface MatchWithTeams extends Omit<TournamentMatchRow, never> {
+  homeTeamName: string;
+  awayTeamName: string;
+}
+
+/** Match event row augmented with player names resolved via JOIN */
+export interface MatchEventWithPlayers extends Omit<MatchEventRow, never> {
+  subjectPlayerName: string | null;
+  objectPlayerName: string | null;
+}
+
+/** Match appearance row augmented with player and team name resolved via JOIN */
+export interface MatchAppearanceWithNames extends Omit<MatchAppearanceRow, never> {
+  playerName: string;
+  teamName: string;
+}
 
 export interface TopScorerRow {
   htPlayerId: number;
   playerName: string;
   htTeamId: number;
+  teamName: string;
   goals: number;
 }
 
@@ -72,11 +98,14 @@ export interface TournamentRepository {
    */
   replaceMatches(tournamentId: string, rows: NewTournamentMatchRow[]): Promise<void>;
 
-  /** Return all standings for a tournament, ordered by group then position */
-  getStandings(tournamentId: string): Promise<TournamentStandingRow[]>;
+  /** Return all standings for a tournament with team names resolved via JOIN */
+  getStandings(tournamentId: string): Promise<StandingWithTeam[]>;
 
-  /** Return all matches for a tournament, ordered by round then date */
-  getMatches(tournamentId: string): Promise<TournamentMatchRow[]>;
+  /** Return all matches for a tournament with team names resolved via JOIN */
+  getMatches(tournamentId: string): Promise<MatchWithTeams[]>;
+
+  /** Return a single match by internal ID with team names resolved via JOIN */
+  getMatchById(matchId: string): Promise<MatchWithTeams | null>;
 
   /** Return finished matches that haven't had their details synced yet */
   getUnsyncedFinishedMatches(tournamentId: string): Promise<TournamentMatchRow[]>;
@@ -95,6 +124,12 @@ export interface TournamentRepository {
    * Deletes existing rows then inserts new ones.
    */
   replaceMatchAppearances(matchId: string, rows: NewMatchAppearanceRow[]): Promise<void>;
+
+  /** Return events for a single match with player names resolved via JOIN */
+  getMatchEvents(matchId: string): Promise<MatchEventWithPlayers[]>;
+
+  /** Return appearances for a single match with player and team names resolved via JOIN */
+  getMatchAppearances(matchId: string): Promise<MatchAppearanceWithNames[]>;
 
   /** Return top scorers for a tournament (goals = count of EventTypeID 100-199) */
   getTopScorers(tournamentId: string, limit?: number): Promise<TopScorerRow[]>;
@@ -170,8 +205,6 @@ export function createTournamentRepository(db: DB): TournamentRepository {
     },
 
     async replaceStandings(tournamentId, rows) {
-      // libsql doesn't support true transactions via Drizzle batch easily,
-      // so we do delete then insert sequentially (acceptable for this use case)
       await db
         .delete(tournamentStandingsTable)
         .where(eq(tournamentStandingsTable.tournamentId, tournamentId));
@@ -192,27 +225,104 @@ export function createTournamentRepository(db: DB): TournamentRepository {
     },
 
     async getStandings(tournamentId) {
-      return db
-        .select()
+      // Alias teams table for the JOIN
+      const teamAlias = teamsTable;
+
+      const rows = await db
+        .select({
+          id: tournamentStandingsTable.id,
+          tournamentId: tournamentStandingsTable.tournamentId,
+          groupId: tournamentStandingsTable.groupId,
+          htTeamId: tournamentStandingsTable.htTeamId,
+          teamName: sql<string>`COALESCE(${teamAlias.name}, 'Team ' || ${tournamentStandingsTable.htTeamId})`,
+          position: tournamentStandingsTable.position,
+          played: tournamentStandingsTable.played,
+          won: tournamentStandingsTable.won,
+          drawn: tournamentStandingsTable.drawn,
+          lost: tournamentStandingsTable.lost,
+          goalsFor: tournamentStandingsTable.goalsFor,
+          goalsAgainst: tournamentStandingsTable.goalsAgainst,
+          points: tournamentStandingsTable.points,
+        })
         .from(tournamentStandingsTable)
+        .leftJoin(teamAlias, eq(tournamentStandingsTable.htTeamId, teamAlias.htTeamId))
         .where(eq(tournamentStandingsTable.tournamentId, tournamentId))
         .orderBy(
           asc(tournamentStandingsTable.groupId),
           asc(tournamentStandingsTable.position),
         )
         .all();
+
+      return rows as StandingWithTeam[];
     },
 
     async getMatches(tournamentId) {
-      return db
-        .select()
+      // We need two JOINs for home and away teams — use aliased tables via SQL
+      const rows = await db
+        .select({
+          id: tournamentMatchesTable.id,
+          tournamentId: tournamentMatchesTable.tournamentId,
+          htMatchId: tournamentMatchesTable.htMatchId,
+          round: tournamentMatchesTable.round,
+          matchDate: tournamentMatchesTable.matchDate,
+          homeTeamId: tournamentMatchesTable.homeTeamId,
+          homeTeamName: sql<string>`COALESCE(home_team.name, 'Team ' || ${tournamentMatchesTable.homeTeamId})`,
+          awayTeamId: tournamentMatchesTable.awayTeamId,
+          awayTeamName: sql<string>`COALESCE(away_team.name, 'Team ' || ${tournamentMatchesTable.awayTeamId})`,
+          homeGoals: tournamentMatchesTable.homeGoals,
+          awayGoals: tournamentMatchesTable.awayGoals,
+          status: tournamentMatchesTable.status,
+          detailsSynced: tournamentMatchesTable.detailsSynced,
+        })
         .from(tournamentMatchesTable)
+        .leftJoin(
+          sql`${teamsTable} AS home_team`,
+          sql`${tournamentMatchesTable.homeTeamId} = home_team.ht_team_id`,
+        )
+        .leftJoin(
+          sql`${teamsTable} AS away_team`,
+          sql`${tournamentMatchesTable.awayTeamId} = away_team.ht_team_id`,
+        )
         .where(eq(tournamentMatchesTable.tournamentId, tournamentId))
         .orderBy(
           asc(tournamentMatchesTable.round),
           asc(tournamentMatchesTable.matchDate),
         )
         .all();
+
+      return rows as MatchWithTeams[];
+    },
+
+    async getMatchById(matchId) {
+      const rows = await db
+        .select({
+          id: tournamentMatchesTable.id,
+          tournamentId: tournamentMatchesTable.tournamentId,
+          htMatchId: tournamentMatchesTable.htMatchId,
+          round: tournamentMatchesTable.round,
+          matchDate: tournamentMatchesTable.matchDate,
+          homeTeamId: tournamentMatchesTable.homeTeamId,
+          homeTeamName: sql<string>`COALESCE(home_team.name, 'Team ' || ${tournamentMatchesTable.homeTeamId})`,
+          awayTeamId: tournamentMatchesTable.awayTeamId,
+          awayTeamName: sql<string>`COALESCE(away_team.name, 'Team ' || ${tournamentMatchesTable.awayTeamId})`,
+          homeGoals: tournamentMatchesTable.homeGoals,
+          awayGoals: tournamentMatchesTable.awayGoals,
+          status: tournamentMatchesTable.status,
+          detailsSynced: tournamentMatchesTable.detailsSynced,
+        })
+        .from(tournamentMatchesTable)
+        .leftJoin(
+          sql`${teamsTable} AS home_team`,
+          sql`${tournamentMatchesTable.homeTeamId} = home_team.ht_team_id`,
+        )
+        .leftJoin(
+          sql`${teamsTable} AS away_team`,
+          sql`${tournamentMatchesTable.awayTeamId} = away_team.ht_team_id`,
+        )
+        .where(eq(tournamentMatchesTable.id, matchId))
+        .get();
+
+      return rows ? (rows as MatchWithTeams) : null;
     },
 
     async getUnsyncedFinishedMatches(tournamentId) {
@@ -257,16 +367,76 @@ export function createTournamentRepository(db: DB): TournamentRepository {
       }
     },
 
+    async getMatchEvents(matchId) {
+      const subjectPlayer = playersTable;
+      const rows = await db
+        .select({
+          id: matchEventsTable.id,
+          matchId: matchEventsTable.matchId,
+          tournamentId: matchEventsTable.tournamentId,
+          eventTypeId: matchEventsTable.eventTypeId,
+          minute: matchEventsTable.minute,
+          subjectPlayerId: matchEventsTable.subjectPlayerId,
+          subjectTeamId: matchEventsTable.subjectTeamId,
+          objectPlayerId: matchEventsTable.objectPlayerId,
+          subjectPlayerName: sql<string | null>`subject_player.first_name || ' ' || subject_player.last_name`,
+          objectPlayerName: sql<string | null>`object_player.first_name || ' ' || object_player.last_name`,
+        })
+        .from(matchEventsTable)
+        .leftJoin(
+          sql`${subjectPlayer} AS subject_player`,
+          sql`${matchEventsTable.subjectPlayerId} = subject_player.ht_player_id`,
+        )
+        .leftJoin(
+          sql`${subjectPlayer} AS object_player`,
+          sql`${matchEventsTable.objectPlayerId} = object_player.ht_player_id`,
+        )
+        .where(eq(matchEventsTable.matchId, matchId))
+        .orderBy(asc(matchEventsTable.minute))
+        .all();
+
+      return rows as MatchEventWithPlayers[];
+    },
+
+    async getMatchAppearances(matchId) {
+      const rows = await db
+        .select({
+          id: matchAppearancesTable.id,
+          matchId: matchAppearancesTable.matchId,
+          tournamentId: matchAppearancesTable.tournamentId,
+          htPlayerId: matchAppearancesTable.htPlayerId,
+          htTeamId: matchAppearancesTable.htTeamId,
+          roleId: matchAppearancesTable.roleId,
+          behaviour: matchAppearancesTable.behaviour,
+          minuteIn: matchAppearancesTable.minuteIn,
+          minuteOut: matchAppearancesTable.minuteOut,
+          ratingStars: matchAppearancesTable.ratingStars,
+          playerName: sql<string>`COALESCE(${playersTable.firstName} || ' ' || ${playersTable.lastName}, 'Player ' || ${matchAppearancesTable.htPlayerId})`,
+          teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchAppearancesTable.htTeamId})`,
+        })
+        .from(matchAppearancesTable)
+        .leftJoin(playersTable, eq(matchAppearancesTable.htPlayerId, playersTable.htPlayerId))
+        .leftJoin(teamsTable, eq(matchAppearancesTable.htTeamId, teamsTable.htTeamId))
+        .where(eq(matchAppearancesTable.matchId, matchId))
+        .orderBy(asc(matchAppearancesTable.htTeamId), asc(matchAppearancesTable.minuteIn), asc(matchAppearancesTable.roleId))
+        .all();
+
+      return rows as MatchAppearanceWithNames[];
+    },
+
     async getTopScorers(tournamentId, limit = 10) {
       // Goals = match_events where eventTypeId between 100 and 199
       const rows = await db
         .select({
           htPlayerId: matchEventsTable.subjectPlayerId,
-          playerName: matchEventsTable.subjectPlayerName,
+          playerName: sql<string>`COALESCE(${playersTable.firstName} || ' ' || ${playersTable.lastName}, 'Desconocido')`,
           htTeamId: matchEventsTable.subjectTeamId,
+          teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchEventsTable.subjectTeamId})`,
           goals: sql<number>`count(*)`,
         })
         .from(matchEventsTable)
+        .leftJoin(playersTable, eq(matchEventsTable.subjectPlayerId, playersTable.htPlayerId))
+        .leftJoin(teamsTable, eq(matchEventsTable.subjectTeamId, teamsTable.htTeamId))
         .where(
           and(
             eq(matchEventsTable.tournamentId, tournamentId),
@@ -277,8 +447,10 @@ export function createTournamentRepository(db: DB): TournamentRepository {
         )
         .groupBy(
           matchEventsTable.subjectPlayerId,
-          matchEventsTable.subjectPlayerName,
           matchEventsTable.subjectTeamId,
+          playersTable.firstName,
+          playersTable.lastName,
+          teamsTable.name,
         )
         .orderBy(desc(sql`count(*)`))
         .limit(limit)
@@ -288,8 +460,9 @@ export function createTournamentRepository(db: DB): TournamentRepository {
         .filter((r) => r.htPlayerId !== null)
         .map((r) => ({
           htPlayerId: r.htPlayerId!,
-          playerName: r.playerName ?? 'Desconocido',
+          playerName: r.playerName,
           htTeamId: r.htTeamId ?? 0,
+          teamName: r.teamName,
           goals: r.goals,
         }));
     },
