@@ -67,27 +67,6 @@ function formatMatchDate(dateStr: string): string {
   }
 }
 
-// ─── Goal ball icon ───────────────────────────────────────────────────────────
-
-function GoalBall(props: { size?: number }) {
-  const s = props.size ?? 16;
-  // A proper football (soccer ball) icon — black pentagon pattern
-  return (
-    <span class="inline-flex items-center justify-center shrink-0" aria-hidden="true" style={{ width: `${s}px`, height: `${s}px` }}>
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: `${s}px`, height: `${s}px` }}>
-        <circle cx="12" cy="12" r="10.5" stroke="#374151" stroke-width="1.5" fill="white"/>
-        {/* Central pentagon */}
-        <polygon points="12,5.5 14.4,7.8 13.6,10.8 10.4,10.8 9.6,7.8" fill="#374151"/>
-        {/* Surrounding pentagons (partial) */}
-        <polygon points="9.6,7.8 7.0,8.7 5.8,11.5 8.2,13.2 10.4,10.8" fill="#374151"/>
-        <polygon points="14.4,7.8 17.0,8.7 18.2,11.5 15.8,13.2 13.6,10.8" fill="#374151"/>
-        <polygon points="8.2,13.2 7.2,16.0 9.8,17.4 12,15.5 10.4,12.8" fill="#374151"/>
-        <polygon points="15.8,13.2 16.8,16.0 14.2,17.4 12,15.5 13.6,12.8" fill="#374151"/>
-      </svg>
-    </span>
-  );
-}
-
 // ─── Events timeline ──────────────────────────────────────────────────────────
 
 /**
@@ -107,7 +86,6 @@ function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
               <div class="flex items-center gap-2 justify-end min-w-0">
                 <Show when={isHome}>
                   <span class="text-sm font-medium text-gray-900 truncate text-right">{name}</span>
-                  <GoalBall size={15} />
                 </Show>
               </div>
               {/* Minute — always centered */}
@@ -115,7 +93,6 @@ function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
               {/* Away column */}
               <div class="flex items-center gap-2 justify-start min-w-0">
                 <Show when={!isHome}>
-                  <GoalBall size={15} />
                   <span class="text-sm font-medium text-gray-900 truncate">{name}</span>
                 </Show>
               </div>
