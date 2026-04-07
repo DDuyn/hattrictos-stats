@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from 'solid-js';
+import { For, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { onMount } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
@@ -33,15 +33,25 @@ function createMatchDetailCtrl() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Maps CHPP RoleID to a short position label */
+/**
+ * Maps CHPP RoleID to a short position label.
+ *
+ * 100       = POR (goalkeeper)
+ * 101-103   = DEF (central defenders)
+ * 104-105   = LAT (wing defenders / lateral)
+ * 106-108   = MED (midfielders)
+ * 109-110   = EXT (wingers / extremos)
+ * 111-113   = DEL (forwards)
+ * 114+      = SUP (substitutes that came in)
+ */
 function roleLabel(roleId: number): string {
   if (roleId === 100) return 'POR';
-  if (roleId >= 101 && roleId <= 104) return 'DEF';
-  if (roleId >= 105 && roleId <= 108) return 'MED';
-  if (roleId >= 109 && roleId <= 113) return 'DEL';
-  // Substitutes (came in during the match)
+  if (roleId >= 101 && roleId <= 103) return 'DEF';
+  if (roleId >= 104 && roleId <= 105) return 'LAT';
+  if (roleId >= 106 && roleId <= 108) return 'MED';
+  if (roleId >= 109 && roleId <= 110) return 'EXT';
+  if (roleId >= 111 && roleId <= 113) return 'DEL';
   if (roleId >= 114) return 'SUP';
-  // Unknown / special role (e.g. Arena roleId=17) — show nothing
   return '';
 }
 
@@ -57,37 +67,57 @@ function formatMatchDate(dateStr: string): string {
   }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Goal ball icon ───────────────────────────────────────────────────────────
 
-function GoalBall() {
+function GoalBall(props: { size?: number }) {
+  const s = props.size ?? 16;
+  // A proper football (soccer ball) icon — black pentagon pattern
   return (
-    <span class="inline-block w-4 h-4 shrink-0" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="8" cy="8" r="7.5" stroke="#374151" stroke-width="1"/>
-        <polygon points="8,2 9.5,6 14,6 10.5,8.5 12,12.5 8,10 4,12.5 5.5,8.5 2,6 6.5,6" fill="#374151" stroke="none"/>
+    <span class="inline-flex items-center justify-center shrink-0" aria-hidden="true" style={{ width: `${s}px`, height: `${s}px` }}>
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: `${s}px`, height: `${s}px` }}>
+        <circle cx="12" cy="12" r="10.5" stroke="#374151" stroke-width="1.5" fill="white"/>
+        {/* Central pentagon */}
+        <polygon points="12,5.5 14.4,7.8 13.6,10.8 10.4,10.8 9.6,7.8" fill="#374151"/>
+        {/* Surrounding pentagons (partial) */}
+        <polygon points="9.6,7.8 7.0,8.7 5.8,11.5 8.2,13.2 10.4,10.8" fill="#374151"/>
+        <polygon points="14.4,7.8 17.0,8.7 18.2,11.5 15.8,13.2 13.6,10.8" fill="#374151"/>
+        <polygon points="8.2,13.2 7.2,16.0 9.8,17.4 12,15.5 10.4,12.8" fill="#374151"/>
+        <polygon points="15.8,13.2 16.8,16.0 14.2,17.4 12,15.5 13.6,12.8" fill="#374151"/>
       </svg>
     </span>
   );
 }
 
+// ─── Events timeline ──────────────────────────────────────────────────────────
+
+/**
+ * Three-column layout: [home side] [minute] [away side]
+ * Each goal appears in the correct column with no overlap.
+ */
 function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
   return (
-    <div class="flex flex-col gap-1.5 py-2">
+    <div class="flex flex-col divide-y divide-gray-50">
       <For each={props.events}>
         {(ev) => {
           const isHome = ev.subjectTeamId === props.homeTeamId;
+          const name = ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`;
           return (
-            <div class={`flex items-center gap-3 ${isHome ? 'flex-row' : 'flex-row-reverse'}`}>
-              {/* Minute badge */}
-              <span class="text-xs font-mono text-gray-400 w-8 shrink-0 text-center">
-                {ev.minute}'
-              </span>
-              {/* Event card */}
-              <div class={`flex items-center gap-2 min-w-0 flex-1 ${isHome ? '' : 'justify-end'}`}>
-                <GoalBall />
-                <span class="text-sm font-medium text-gray-900 truncate">
-                  {ev.subjectPlayerName ?? `Jugador #${ev.subjectPlayerId}`}
-                </span>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-4 py-2.5">
+              {/* Home column */}
+              <div class="flex items-center gap-2 justify-end min-w-0">
+                <Show when={isHome}>
+                  <span class="text-sm font-medium text-gray-900 truncate text-right">{name}</span>
+                  <GoalBall size={15} />
+                </Show>
+              </div>
+              {/* Minute — always centered */}
+              <span class="text-xs font-mono text-gray-400 w-8 text-center shrink-0">{ev.minute}'</span>
+              {/* Away column */}
+              <div class="flex items-center gap-2 justify-start min-w-0">
+                <Show when={!isHome}>
+                  <GoalBall size={15} />
+                  <span class="text-sm font-medium text-gray-900 truncate">{name}</span>
+                </Show>
               </div>
             </div>
           );
@@ -96,6 +126,8 @@ function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
     </div>
   );
 }
+
+// ─── Lineup table ─────────────────────────────────────────────────────────────
 
 function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
   const starters = () => props.appearances.filter((a) => a.minuteIn === 0);
@@ -125,9 +157,9 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
                       <span class="text-xs text-gray-400 ml-1.5">↓{p.minuteOut}'</span>
                     </Show>
                   </td>
-                  <td class="px-3 py-2.5 text-right">
+                  <td class="px-3 py-2.5 text-right whitespace-nowrap">
                     <Show when={p.ratingStars !== null}>
-                      <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}★</span>
+                      <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}</span>
                     </Show>
                   </td>
                 </tr>
@@ -148,9 +180,9 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
                       </span>
                     </td>
                     <td class="px-3 py-2.5 font-medium text-gray-900">{p.playerName}</td>
-                    <td class="px-3 py-2.5 text-right">
+                    <td class="px-3 py-2.5 text-right whitespace-nowrap">
                       <Show when={p.ratingStars !== null}>
-                        <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}★</span>
+                        <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}</span>
                       </Show>
                     </td>
                   </tr>
@@ -216,28 +248,21 @@ export default function MatchDetailPage() {
                   </span>
                 </div>
                 <div class="flex items-center justify-between px-6 py-8 gap-4">
-                  {/* Home team */}
                   <div class="flex-1 text-right">
                     <p class={`text-lg font-semibold leading-tight ${finished && m.homeGoals! > m.awayGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
                       {m.homeTeamName}
                     </p>
                   </div>
-
-                  {/* Score */}
                   <div class="shrink-0 flex items-center gap-3 px-4">
                     <Show
                       when={finished}
-                      fallback={
-                        <span class="text-2xl font-light text-gray-300 tracking-widest">vs</span>
-                      }
+                      fallback={<span class="text-2xl font-light text-gray-300 tracking-widest">vs</span>}
                     >
                       <span class="text-4xl font-bold text-gray-900 tabular-nums">{m.homeGoals}</span>
                       <span class="text-2xl text-gray-300">–</span>
                       <span class="text-4xl font-bold text-gray-900 tabular-nums">{m.awayGoals}</span>
                     </Show>
                   </div>
-
-                  {/* Away team */}
                   <div class="flex-1">
                     <p class={`text-lg font-semibold leading-tight ${finished && m.awayGoals! > m.homeGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
                       {m.awayTeamName}
@@ -257,21 +282,19 @@ export default function MatchDetailPage() {
                       when={d.events.length > 0}
                       fallback={
                         <div class="px-4 py-8 text-center text-sm text-gray-400">
-                           <Show when={finished} fallback="Partido no disputado aún">
-                             Sin goles registrados
-                           </Show>
+                          <Show when={finished} fallback="Partido no disputado aún">
+                            Sin goles registrados
+                          </Show>
                         </div>
                       }
                     >
                       {/* Column headers */}
-                      <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                      <div class="grid grid-cols-[1fr_auto_1fr] gap-x-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide text-right pr-2">{m.homeTeamName}</div>
                         <div class="w-8" />
-                        <div class="flex-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">{m.homeTeamName}</div>
-                        <div class="flex-1 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">{m.awayTeamName}</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide pl-2">{m.awayTeamName}</div>
                       </div>
-                      <div class="px-4">
-                        <EventTimeline events={d.events} homeTeamId={m.homeTeamId} />
-                      </div>
+                      <EventTimeline events={d.events} homeTeamId={m.homeTeamId} />
                     </Show>
                   </div>
                 </section>
