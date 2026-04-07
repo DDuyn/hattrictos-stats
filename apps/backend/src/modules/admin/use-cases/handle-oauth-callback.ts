@@ -1,14 +1,16 @@
 import {
-  type Result,
   type AppError,
-  ok,
   err,
+  ok,
+  type Result,
   unauthorizedError,
-  internalError,
-} from '@hattrictos-stats/shared';
-import type { ChppClient, OAuthAccessToken } from '../../../infrastructure/chpp/chpp-client';
-import type { ChppTokenRepository } from '../infrastructure/chpp-token.repository';
-import { oauthStateStore } from '../infrastructure/oauth-state-store';
+} from "@hattrictos-stats/shared";
+import type {
+  ChppClient,
+  OAuthAccessToken,
+} from "../../../infrastructure/chpp/chpp-client";
+import type { ChppTokenRepository } from "../infrastructure/chpp-token.repository";
+import { oauthStateStore } from "../infrastructure/oauth-state-store";
 
 export interface HandleOAuthCallbackInput {
   /** The state value we included in the callback URL (CSRF check) */
@@ -50,7 +52,7 @@ export function createHandleOAuthCallback(
     if (!pending) {
       return err(
         unauthorizedError(
-          'Invalid or expired OAuth state. Please restart the connection flow.',
+          "Invalid or expired OAuth state. Please restart the connection flow.",
         ),
       );
     }
@@ -59,7 +61,7 @@ export function createHandleOAuthCallback(
     if (input.oauthToken !== pending.requestToken) {
       return err(
         unauthorizedError(
-          'OAuth token mismatch. The callback token does not match the initiated flow.',
+          "OAuth token mismatch. The callback token does not match the initiated flow.",
         ),
       );
     }

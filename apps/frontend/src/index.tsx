@@ -7,6 +7,10 @@ import { ToastProvider } from './context/toast.context';
 import Layout from './components/Layout';
 import Home from './pages/home/Home';
 import Profile from './pages/profile/Profile';
+import ChppExplorer from './pages/chpp-explorer/ChppExplorer';
+import TournamentsList from './pages/tournaments/TournamentsList';
+import TournamentDetail from './pages/tournaments/TournamentDetail';
+import AdminTournaments from './pages/admin-tournaments/AdminTournaments';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');
@@ -18,6 +22,10 @@ render(
         <Router root={Layout}>
           <Route path="/" component={Home} />
           <Route path="/profile" component={Profile} />
+          <Route path="/chpp-explorer" component={ChppExplorer} />
+          <Route path="/torneos" component={TournamentsList} />
+          <Route path="/torneos/:id" component={TournamentDetail} />
+          <Route path="/admin/torneos" component={AdminTournaments} />
         </Router>
       </AuthProvider>
     </ToastProvider>

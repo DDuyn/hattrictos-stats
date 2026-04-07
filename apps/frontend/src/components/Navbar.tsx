@@ -5,6 +5,7 @@ import { clearToken } from '../lib/api-client';
 import { LoginModal } from './LoginModal';
 import { CreateUserModal } from './CreateUserModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { chppApi } from '../domain/chpp/chpp.api';
 
 export function Navbar() {
   const { user, clearUser } = useAuth();
@@ -13,6 +14,20 @@ export function Navbar() {
   const [loginOpen, setLoginOpen] = createSignal(false);
   const [addUserOpen, setAddUserOpen] = createSignal(false);
   const [changePasswordOpen, setChangePasswordOpen] = createSignal(false);
+  const [connectingChpp, setConnectingChpp] = createSignal(false);
+
+  const isOwner = () => user()?.role === 'owner';
+
+  async function handleChppConnect() {
+    setMenuOpen(false);
+    setConnectingChpp(true);
+    try {
+      const { authorizeUrl } = await chppApi.connect();
+      window.location.href = authorizeUrl;
+    } catch {
+      setConnectingChpp(false);
+    }
+  }
 
   function handleUnauthorized() {
     clearUser();
@@ -122,6 +137,20 @@ export function Navbar() {
                 </Show>
 
                 <div class="border-t border-gray-100 mt-1 pt-1">
+                  {/* Hattrick connect — owner only */}
+                  <Show when={isOwner()}>
+                    <button
+                      type="button"
+                      onClick={handleChppConnect}
+                      disabled={connectingChpp()}
+                      class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                      </svg>
+                      {connectingChpp() ? 'Redirigiendo...' : 'Conectar Hattrick'}
+                    </button>
+                  </Show>
                   <button
                     type="button"
                     onClick={() => { setMenuOpen(false); setChangePasswordOpen(true); }}

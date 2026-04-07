@@ -22,6 +22,20 @@
       "when": 1774708929874,
       "tag": "0002_third_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1775500649039,
+      "tag": "0003_soft_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1775505023845,
+      "tag": "0004_milky_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

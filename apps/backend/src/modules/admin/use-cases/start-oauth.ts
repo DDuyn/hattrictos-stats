@@ -1,19 +1,15 @@
-import {
-  type Result,
-  type AppError,
-  ok,
-  err,
-  internalError,
-} from '@hattrictos-stats/shared';
-import type { ChppClient } from '../../../infrastructure/chpp/chpp-client';
-import { oauthStateStore } from '../infrastructure/oauth-state-store';
+import { type AppError, ok, type Result } from "@hattrictos-stats/shared";
+import type { ChppClient } from "../../../infrastructure/chpp/chpp-client";
+import { oauthStateStore } from "../infrastructure/oauth-state-store";
 
 export interface StartOAuthOutput {
   /** URL the admin should be redirected to in order to authorise the app */
   authorizeUrl: string;
 }
 
-export type StartOAuth = (appUrl: string) => Promise<Result<StartOAuthOutput, AppError>>;
+export type StartOAuth = (
+  appUrl: string,
+) => Promise<Result<StartOAuthOutput, AppError>>;
 
 /**
  * Initiates the CHPP OAuth 1.0a flow.
@@ -28,7 +24,9 @@ export type StartOAuth = (appUrl: string) => Promise<Result<StartOAuthOutput, Ap
  * oauth_token and oauth_verifier query params.
  */
 export function createStartOAuth(chppClient: ChppClient): StartOAuth {
-  return async (appUrl: string): Promise<Result<StartOAuthOutput, AppError>> => {
+  return async (
+    appUrl: string,
+  ): Promise<Result<StartOAuthOutput, AppError>> => {
     // Generate a cryptographically random state for CSRF protection
     const state = crypto.randomUUID();
 

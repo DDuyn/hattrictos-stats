@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/error-handler';
 import { healthApi } from './modules/health/health.api';
 import { authApi } from './modules/auth/auth.api';
 import { adminApi } from './modules/admin/admin.api';
+import { tournamentsApi } from './modules/tournaments/tournaments.api';
 import { env } from './config/env';
 
 export function createApp() {
@@ -29,6 +30,8 @@ export function createApp() {
   app.route('/api/health', healthApi);
   app.route('/api/auth', authApi);
   app.route('/api/admin', adminApi);
+  app.route('/api/admin/tournaments', tournamentsApi);
+  app.route('/api/tournaments', tournamentsApi);
 
   return app;
 }

@@ -12,6 +12,12 @@ import { createChppTokenRepository } from './infrastructure/chpp-token.repositor
 import { createStartOAuth } from './use-cases/start-oauth';
 import { createHandleOAuthCallback } from './use-cases/handle-oauth-callback';
 import { createVerifyConnection } from './use-cases/verify-connection';
+import {
+  createFetchMatchDetails,
+  createFetchTournamentDetails,
+  createFetchTournamentFixtures,
+  createFetchTournamentLeagueTable,
+} from './use-cases/explore-chpp';
 import { createAuthRepository } from '../auth/infrastructure/auth.repository';
 import { createCreateUser } from '../auth/use-cases/create-user';
 
@@ -196,6 +202,161 @@ admin.get('/chpp/verify', ownerOrCoOwnerGuard, async (c) => {
 
   log?.info('chpp_verified', { teamName: result.value.teamName, htLoginName: result.value.htLoginName });
   return c.json(result.value);
+});
+
+/**
+ * GET /api/admin/chpp/match/:matchId
+ *
+ * Returns the raw CHPP response for a match as JSON (matchdetails + events).
+ * Exploration endpoint — no data is persisted.
+ * Requires owner or co_owner JWT.
+ */
+admin.get('/chpp/match/:matchId', ownerOrCoOwnerGuard, async (c) => {
+  const log = c.var.log;
+  const matchId = Number(c.req.param('matchId'));
+
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return c.json({ code: 'VALIDATION_ERROR', message: 'matchId must be a positive integer.' }, 400);
+  }
+
+  let chppConfig: { consumerKey: string; consumerSecret: string };
+  let encryption: ReturnType<typeof createChppEncryption>;
+  try {
+    chppConfig = getChppConfig();
+    encryption = getEncryption();
+  } catch (e) {
+    return c.json({ code: 'INTERNAL_ERROR', message: (e as Error).message }, 500);
+  }
+
+  const tokenRepository = createChppTokenRepository(db, encryption);
+  const fetchMatchDetails = createFetchMatchDetails(chppConfig, tokenRepository);
+
+  const result = await fetchMatchDetails(matchId);
+  if (!result.ok) {
+    log?.warn('chpp_match_fetch_failed', { matchId, error: result.error });
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  log?.info('chpp_match_fetched', { matchId });
+  return c.json({ data: result.value });
+});
+
+/**
+ * GET /api/admin/chpp/tournament/:tournamentId/fixtures
+ *
+ * Returns the full fixture calendar (all rounds + results) for a tournament.
+ * Exploration endpoint — no data is persisted.
+ * Requires owner or co_owner JWT.
+ *
+ * NOTE: must be registered before /:tournamentId to avoid Hono capturing
+ * "98765/fixtures" as the tournamentId param.
+ */
+admin.get('/chpp/tournament/:tournamentId/fixtures', ownerOrCoOwnerGuard, async (c) => {
+  const log = c.var.log;
+  const tournamentId = Number(c.req.param('tournamentId'));
+
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return c.json({ code: 'VALIDATION_ERROR', message: 'tournamentId must be a positive integer.' }, 400);
+  }
+
+  let chppConfig: { consumerKey: string; consumerSecret: string };
+  let encryption: ReturnType<typeof createChppEncryption>;
+  try {
+    chppConfig = getChppConfig();
+    encryption = getEncryption();
+  } catch (e) {
+    return c.json({ code: 'INTERNAL_ERROR', message: (e as Error).message }, 500);
+  }
+
+  const tokenRepository = createChppTokenRepository(db, encryption);
+  const fetchFixtures = createFetchTournamentFixtures(chppConfig, tokenRepository);
+
+  const result = await fetchFixtures(tournamentId);
+  if (!result.ok) {
+    log?.warn('chpp_tournament_fixtures_failed', { tournamentId, error: result.error });
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  log?.info('chpp_tournament_fixtures_fetched', { tournamentId });
+  return c.json({ data: result.value });
+});
+
+/**
+ * GET /api/admin/chpp/tournament/:tournamentId/table
+ *
+ * Returns the league standings table for a tournament (tournamentleaguetables).
+ * Available for the current season and up to 2 seasons after the tournament finished.
+ * Exploration endpoint — no data is persisted.
+ * Requires owner or co_owner JWT.
+ *
+ * NOTE: must be registered before /:tournamentId to avoid Hono capturing
+ * "98765/table" as the tournamentId param.
+ */
+admin.get('/chpp/tournament/:tournamentId/table', ownerOrCoOwnerGuard, async (c) => {
+  const log = c.var.log;
+  const tournamentId = Number(c.req.param('tournamentId'));
+
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return c.json({ code: 'VALIDATION_ERROR', message: 'tournamentId must be a positive integer.' }, 400);
+  }
+
+  let chppConfig: { consumerKey: string; consumerSecret: string };
+  let encryption: ReturnType<typeof createChppEncryption>;
+  try {
+    chppConfig = getChppConfig();
+    encryption = getEncryption();
+  } catch (e) {
+    return c.json({ code: 'INTERNAL_ERROR', message: (e as Error).message }, 500);
+  }
+
+  const tokenRepository = createChppTokenRepository(db, encryption);
+  const fetchTable = createFetchTournamentLeagueTable(chppConfig, tokenRepository);
+
+  const result = await fetchTable(tournamentId);
+  if (!result.ok) {
+    log?.warn('chpp_tournament_table_failed', { tournamentId, error: result.error });
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  log?.info('chpp_tournament_table_fetched', { tournamentId });
+  return c.json({ data: result.value });
+});
+
+/**
+ * GET /api/admin/chpp/tournament/:tournamentId
+ *
+ * Returns the raw CHPP response for a tournament as JSON (tournamentdetails).
+ * Exploration endpoint — no data is persisted.
+ * Requires owner or co_owner JWT.
+ */
+admin.get('/chpp/tournament/:tournamentId', ownerOrCoOwnerGuard, async (c) => {
+  const log = c.var.log;
+  const tournamentId = Number(c.req.param('tournamentId'));
+
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return c.json({ code: 'VALIDATION_ERROR', message: 'tournamentId must be a positive integer.' }, 400);
+  }
+
+  let chppConfig: { consumerKey: string; consumerSecret: string };
+  let encryption: ReturnType<typeof createChppEncryption>;
+  try {
+    chppConfig = getChppConfig();
+    encryption = getEncryption();
+  } catch (e) {
+    return c.json({ code: 'INTERNAL_ERROR', message: (e as Error).message }, 500);
+  }
+
+  const tokenRepository = createChppTokenRepository(db, encryption);
+  const fetchTournamentDetails = createFetchTournamentDetails(chppConfig, tokenRepository);
+
+  const result = await fetchTournamentDetails(tournamentId);
+  if (!result.ok) {
+    log?.warn('chpp_tournament_fetch_failed', { tournamentId, error: result.error });
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  log?.info('chpp_tournament_fetched', { tournamentId });
+  return c.json({ data: result.value });
 });
 
 export { admin as adminApi };
