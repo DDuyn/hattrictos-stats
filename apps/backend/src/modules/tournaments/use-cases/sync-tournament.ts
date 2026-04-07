@@ -312,13 +312,22 @@ export function parseMatchLineup(
   const players: ParsedLineupResult['players'] = [];
 
   // ── Process starters ─────────────────────────────────────────────────────────
+  // Use a Map to deduplicate: keep the entry with the higher roleId (field position > bench role)
+  const starterMap = new Map<number, { p: Record<string, unknown>; roleId: number }>();
   for (const p of starters) {
     const htPlayerId = getNum(p, 'PlayerID', 'playerId');
     if (isNaN(htPlayerId)) continue;
+    const roleId = getNum(p, 'RoleID', 'roleId');
+    const existing = starterMap.get(htPlayerId);
+    // Prefer roleId >= 100 (actual field position) over lower values (bench/special roles)
+    if (!existing || (roleId >= 100 && existing.roleId < 100)) {
+      starterMap.set(htPlayerId, { p, roleId: isNaN(roleId) ? 0 : roleId });
+    }
+  }
 
+  for (const [htPlayerId, { p, roleId }] of starterMap) {
     const firstName = getStr(p, 'FirstName', 'firstName');
     const lastName = getStr(p, 'LastName', 'lastName');
-    const roleId = getNum(p, 'RoleID', 'roleId');
     const behaviour = getNum(p, 'Behaviour', 'behaviour');
     const minuteOut = minuteOutMap.get(htPlayerId) ?? null;
     const rating = ratingMap.get(htPlayerId) ?? null;
@@ -329,7 +338,7 @@ export function parseMatchLineup(
       tournamentId,
       htPlayerId,
       htTeamId: isNaN(htTeamId) ? 0 : htTeamId,
-      roleId: isNaN(roleId) ? 0 : roleId,
+      roleId,
       behaviour: isNaN(behaviour) ? 0 : behaviour,
       minuteIn: 0,
       minuteOut,

@@ -36,22 +36,13 @@ function createMatchDetailCtrl() {
 /** Maps CHPP RoleID to a short position label */
 function roleLabel(roleId: number): string {
   if (roleId === 100) return 'POR';
-  if (roleId === 101) return 'DEF';
-  if (roleId === 102) return 'DEF';
-  if (roleId === 103) return 'DEF';
-  if (roleId === 104) return 'DEF';
-  if (roleId === 105) return 'MED';
-  if (roleId === 106) return 'MED';
-  if (roleId === 107) return 'MED';
-  if (roleId === 108) return 'MED';
-  if (roleId === 109) return 'DEL';
-  if (roleId === 110) return 'DEL';
-  if (roleId === 111) return 'DEL';
-  if (roleId === 112) return 'DEL';
-  if (roleId === 113) return 'DEL';
-  // Substitutes (came in)
+  if (roleId >= 101 && roleId <= 104) return 'DEF';
+  if (roleId >= 105 && roleId <= 108) return 'MED';
+  if (roleId >= 109 && roleId <= 113) return 'DEL';
+  // Substitutes (came in during the match)
   if (roleId >= 114) return 'SUP';
-  return '—';
+  // Unknown / special role (e.g. Arena roleId=17) — show nothing
+  return '';
 }
 
 function formatMatchDate(dateStr: string): string {
@@ -94,16 +85,9 @@ function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
               {/* Event card */}
               <div class={`flex items-center gap-2 min-w-0 flex-1 ${isHome ? '' : 'justify-end'}`}>
                 <GoalBall />
-                <div class={`min-w-0 ${isHome ? '' : 'text-right'}`}>
-                  <span class="text-sm font-medium text-gray-900 truncate block">
-                    {ev.subjectPlayerName ?? `Jugador #${ev.subjectPlayerId}`}
-                  </span>
-                  <Show when={ev.objectPlayerId !== null}>
-                    <span class="text-xs text-gray-400">
-                      Asistencia: {ev.objectPlayerName ?? `#${ev.objectPlayerId}`}
-                    </span>
-                  </Show>
-                </div>
+                <span class="text-sm font-medium text-gray-900 truncate">
+                  {ev.subjectPlayerName ?? `Jugador #${ev.subjectPlayerId}`}
+                </span>
               </div>
             </div>
           );
@@ -128,18 +112,20 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
             <For each={starters()}>
               {(p) => (
                 <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                  <td class="px-3 py-2 w-10">
-                    <span class="text-xs font-mono text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">
-                      {roleLabel(p.roleId)}
-                    </span>
+                  <td class="px-3 py-2.5 w-12 shrink-0">
+                    <Show when={roleLabel(p.roleId) !== ''}>
+                      <span class="text-xs font-mono text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">
+                        {roleLabel(p.roleId)}
+                      </span>
+                    </Show>
                   </td>
-                  <td class="px-3 py-2 font-medium text-gray-900">
+                  <td class="px-3 py-2.5 font-medium text-gray-900">
                     {p.playerName}
                     <Show when={p.minuteOut !== null}>
                       <span class="text-xs text-gray-400 ml-1.5">↓{p.minuteOut}'</span>
                     </Show>
                   </td>
-                  <td class="px-3 py-2 text-right">
+                  <td class="px-3 py-2.5 text-right">
                     <Show when={p.ratingStars !== null}>
                       <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}★</span>
                     </Show>
@@ -156,13 +142,13 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
               <For each={subs()}>
                 {(p) => (
                   <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                    <td class="px-3 py-2 w-10">
+                    <td class="px-3 py-2.5 w-12 shrink-0">
                       <span class="text-xs font-mono text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">
                         ↑{p.minuteIn}'
                       </span>
                     </td>
-                    <td class="px-3 py-2 font-medium text-gray-900">{p.playerName}</td>
-                    <td class="px-3 py-2 text-right">
+                    <td class="px-3 py-2.5 font-medium text-gray-900">{p.playerName}</td>
+                    <td class="px-3 py-2.5 text-right">
                       <Show when={p.ratingStars !== null}>
                         <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}★</span>
                       </Show>
