@@ -13,6 +13,7 @@ import { createRegisterTournament } from './use-cases/register-tournament';
 import { createSyncTournament } from './use-cases/sync-tournament';
 import { createListTournaments } from './use-cases/list-tournaments';
 import { createGetTournament } from './use-cases/get-tournament';
+import { createGetMatchDetail } from './use-cases/get-match-detail';
 import { createTeamsRepository } from '../teams/infrastructure/teams.repository';
 import { createPlayersRepository } from '../players/infrastructure/players.repository';
 
@@ -183,6 +184,27 @@ tournamentsApi.get('/', async (c) => {
   const listTournaments = createListTournaments(tournamentRepository);
 
   const result = await listTournaments();
+  if (!result.ok) {
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  return c.json(result.value);
+});
+
+/**
+ * GET /api/tournaments/:id/matches/:matchId
+ *
+ * Returns full match detail: result, goal events, and both lineups.
+ * Only returns useful data for matches with detailsSynced=1.
+ * Public — no auth required.
+ */
+tournamentsApi.get('/:id/matches/:matchId', async (c) => {
+  const tournamentId = c.req.param('id');
+  const matchId = c.req.param('matchId');
+  const tournamentRepository = createTournamentRepository(db);
+  const getMatchDetail = createGetMatchDetail(tournamentRepository);
+
+  const result = await getMatchDetail(tournamentId, matchId);
   if (!result.ok) {
     return c.json(result.error, errorToStatus(result.error.code));
   }

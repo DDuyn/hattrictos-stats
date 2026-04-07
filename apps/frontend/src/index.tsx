@@ -11,6 +11,7 @@ import ChppExplorer from './pages/chpp-explorer/ChppExplorer';
 import TournamentsList from './pages/tournaments/TournamentsList';
 import TournamentDetail from './pages/tournaments/TournamentDetail';
 import TournamentStats from './pages/tournaments/TournamentStats';
+import MatchDetailPage from './pages/tournaments/MatchDetail';
 import AdminTournaments from './pages/admin-tournaments/AdminTournaments';
 
 const root = document.getElementById('root');
@@ -27,6 +28,7 @@ render(
           <Route path="/torneos" component={TournamentsList} />
           <Route path="/torneos/:id" component={TournamentDetail} />
           <Route path="/torneos/:id/estadisticas" component={TournamentStats} />
+          <Route path="/torneos/:id/partidos/:matchId" component={MatchDetailPage} />
           <Route path="/admin/torneos" component={AdminTournaments} />
         </Router>
       </AuthProvider>

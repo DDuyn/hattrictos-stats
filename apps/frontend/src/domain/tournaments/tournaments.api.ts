@@ -44,6 +44,42 @@ export interface TournamentMatch {
   homeGoals: number | null;
   awayGoals: number | null;
   status: string;
+  detailsSynced: number;
+}
+
+export interface MatchEvent {
+  id: string;
+  matchId: string;
+  tournamentId: string;
+  eventTypeId: number;
+  minute: number;
+  subjectPlayerId: number | null;
+  subjectTeamId: number | null;
+  objectPlayerId: number | null;
+  subjectPlayerName: string | null;
+  objectPlayerName: string | null;
+}
+
+export interface MatchAppearance {
+  id: string;
+  matchId: string;
+  tournamentId: string;
+  htPlayerId: number;
+  htTeamId: number;
+  roleId: number;
+  behaviour: number;
+  minuteIn: number;
+  minuteOut: number | null;
+  ratingStars: number | null;
+  playerName: string;
+  teamName: string;
+}
+
+export interface MatchDetail {
+  match: TournamentMatch & { homeTeamName: string; awayTeamName: string };
+  events: MatchEvent[];
+  homeAppearances: MatchAppearance[];
+  awayAppearances: MatchAppearance[];
 }
 
 export interface TopScorer {
@@ -86,6 +122,10 @@ export const tournamentsApi = {
     request<{ synced: boolean }>(`/admin/tournaments/${id}/sync`, {
       method: 'POST',
     }),
+
+  /** Get full match detail: result, events, and lineups */
+  getMatch: (tournamentId: string, matchId: string) =>
+    request<MatchDetail>(`/tournaments/${tournamentId}/matches/${matchId}`),
 
   /** Update promotion/relegation slots configuration */
   updateConfig: (id: string, config: { promotionSlots?: number; relegationSlots?: number }) =>

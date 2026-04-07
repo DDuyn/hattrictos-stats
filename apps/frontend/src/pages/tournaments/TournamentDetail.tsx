@@ -86,10 +86,12 @@ function StandingsGroup(props: {
 
 // ─── Match row ────────────────────────────────────────────────────────────────
 
-function MatchRow(props: { match: TournamentMatch; showDate?: boolean }) {
+function MatchRow(props: { match: TournamentMatch; tournamentId: string; showDate?: boolean }) {
   const m = props.match;
   const finished = m.status.toLowerCase() === 'finished';
-  return (
+  const hasDetail = finished && m.detailsSynced === 1;
+
+  const inner = () => (
     <div class="flex flex-col py-2.5 border-b border-gray-50 last:border-0 gap-0.5">
       <Show when={props.showDate !== false}>
         <span class="text-xs text-gray-400">{formatMatchDate(m.matchDate)}</span>
@@ -107,11 +109,25 @@ function MatchRow(props: { match: TournamentMatch; showDate?: boolean }) {
       </div>
     </div>
   );
+
+  return (
+    <Show
+      when={hasDetail}
+      fallback={inner()}
+    >
+      <A
+        href={`/torneos/${props.tournamentId}/partidos/${m.id}`}
+        class="block hover:bg-gray-50 transition-colors -mx-4 px-4 rounded"
+      >
+        {inner()}
+      </A>
+    </Show>
+  );
 }
 
 // ─── Round summary card ───────────────────────────────────────────────────────
 
-function RoundCard(props: { label: string; matches: TournamentMatch[] }) {
+function RoundCard(props: { label: string; matches: TournamentMatch[]; tournamentId: string }) {
   return (
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden min-w-0">
       <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
@@ -121,7 +137,7 @@ function RoundCard(props: { label: string; matches: TournamentMatch[] }) {
       </div>
       <div class="px-4">
         <For each={props.matches}>
-          {(m) => <MatchRow match={m} showDate={false} />}
+          {(m) => <MatchRow match={m} tournamentId={props.tournamentId} showDate={false} />}
         </For>
       </div>
     </div>
@@ -303,6 +319,7 @@ export default function TournamentDetail() {
                       <RoundCard
                         label={`Última jornada · J${lastPlayedRound()}`}
                         matches={lastPlayedMatches()}
+                        tournamentId={t.id}
                       />
                     </Show>
                     <TopScorersCard scorers={detail.topScorers ?? []} tournamentId={t.id} />
@@ -317,6 +334,7 @@ export default function TournamentDetail() {
                     <RoundCard
                       label={`J${nextRound()}`}
                       matches={nextRoundMatches()}
+                      tournamentId={t.id}
                     />
                   </section>
                 </Show>
@@ -381,7 +399,7 @@ export default function TournamentDetail() {
                         </div>
                         <div class="px-4">
                           <For each={activeRoundMatches()}>
-                            {(m) => <MatchRow match={m} />}
+                            {(m) => <MatchRow match={m} tournamentId={t.id} />}
                           </For>
                         </div>
                       </div>
