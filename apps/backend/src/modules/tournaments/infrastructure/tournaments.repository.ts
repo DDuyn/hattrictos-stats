@@ -1,18 +1,31 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and, desc, sql } from 'drizzle-orm';
 import type { DB } from '../../../infrastructure/db/client';
 import {
   tournamentsTable,
   tournamentStandingsTable,
   tournamentMatchesTable,
+  matchEventsTable,
+  matchAppearancesTable,
   type TournamentRow,
   type TournamentStandingRow,
   type TournamentMatchRow,
+  type MatchEventRow,
+  type MatchAppearanceRow,
   type NewTournamentRow,
   type NewTournamentStandingRow,
   type NewTournamentMatchRow,
+  type NewMatchEventRow,
+  type NewMatchAppearanceRow,
 } from './tournaments.table';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface TopScorerRow {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  goals: number;
+}
 
 export interface TournamentRepository {
   /** Check whether a tournament with the given Hattrick ID is already registered */
@@ -64,6 +77,27 @@ export interface TournamentRepository {
 
   /** Return all matches for a tournament, ordered by round then date */
   getMatches(tournamentId: string): Promise<TournamentMatchRow[]>;
+
+  /** Return finished matches that haven't had their details synced yet */
+  getUnsyncedFinishedMatches(tournamentId: string): Promise<TournamentMatchRow[]>;
+
+  /** Mark a single match's details as synced */
+  markMatchDetailsSynced(matchId: string): Promise<void>;
+
+  /**
+   * Replace match events for a single match.
+   * Deletes existing rows then inserts new ones.
+   */
+  replaceMatchEvents(matchId: string, rows: NewMatchEventRow[]): Promise<void>;
+
+  /**
+   * Replace match appearances for a single match.
+   * Deletes existing rows then inserts new ones.
+   */
+  replaceMatchAppearances(matchId: string, rows: NewMatchAppearanceRow[]): Promise<void>;
+
+  /** Return top scorers for a tournament (goals = count of EventTypeID 100-199) */
+  getTopScorers(tournamentId: string, limit?: number): Promise<TopScorerRow[]>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -179,6 +213,85 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           asc(tournamentMatchesTable.matchDate),
         )
         .all();
+    },
+
+    async getUnsyncedFinishedMatches(tournamentId) {
+      return db
+        .select()
+        .from(tournamentMatchesTable)
+        .where(
+          and(
+            eq(tournamentMatchesTable.tournamentId, tournamentId),
+            eq(tournamentMatchesTable.status, 'Finished'),
+            eq(tournamentMatchesTable.detailsSynced, 0),
+          ),
+        )
+        .orderBy(asc(tournamentMatchesTable.round), asc(tournamentMatchesTable.matchDate))
+        .all();
+    },
+
+    async markMatchDetailsSynced(matchId) {
+      await db
+        .update(tournamentMatchesTable)
+        .set({ detailsSynced: 1 })
+        .where(eq(tournamentMatchesTable.id, matchId));
+    },
+
+    async replaceMatchEvents(matchId, rows) {
+      await db
+        .delete(matchEventsTable)
+        .where(eq(matchEventsTable.matchId, matchId));
+
+      if (rows.length > 0) {
+        await db.insert(matchEventsTable).values(rows);
+      }
+    },
+
+    async replaceMatchAppearances(matchId, rows) {
+      await db
+        .delete(matchAppearancesTable)
+        .where(eq(matchAppearancesTable.matchId, matchId));
+
+      if (rows.length > 0) {
+        await db.insert(matchAppearancesTable).values(rows);
+      }
+    },
+
+    async getTopScorers(tournamentId, limit = 10) {
+      // Goals = match_events where eventTypeId between 100 and 199
+      const rows = await db
+        .select({
+          htPlayerId: matchEventsTable.subjectPlayerId,
+          playerName: matchEventsTable.subjectPlayerName,
+          htTeamId: matchEventsTable.subjectTeamId,
+          goals: sql<number>`count(*)`,
+        })
+        .from(matchEventsTable)
+        .where(
+          and(
+            eq(matchEventsTable.tournamentId, tournamentId),
+            sql`${matchEventsTable.eventTypeId} >= 100`,
+            sql`${matchEventsTable.eventTypeId} <= 199`,
+            sql`${matchEventsTable.subjectPlayerId} IS NOT NULL`,
+          ),
+        )
+        .groupBy(
+          matchEventsTable.subjectPlayerId,
+          matchEventsTable.subjectPlayerName,
+          matchEventsTable.subjectTeamId,
+        )
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit)
+        .all();
+
+      return rows
+        .filter((r) => r.htPlayerId !== null)
+        .map((r) => ({
+          htPlayerId: r.htPlayerId!,
+          playerName: r.playerName ?? 'Desconocido',
+          htTeamId: r.htTeamId ?? 0,
+          goals: r.goals,
+        }));
     },
   };
 }

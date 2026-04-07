@@ -1,7 +1,7 @@
 import { createStore } from 'solid-js/store';
 import { createSignal, onMount } from 'solid-js';
 import { useParams } from '@solidjs/router';
-import { tournamentsApi, type Tournament, type TournamentDetail, type TournamentStanding, type TournamentMatch } from '../../domain/tournaments/tournaments.api';
+import { tournamentsApi, type Tournament, type TournamentDetail, type TournamentStanding, type TournamentMatch, type TopScorer } from '../../domain/tournaments/tournaments.api';
 
 // ─── Tournaments list ctrl ────────────────────────────────────────────────────
 
@@ -115,10 +115,8 @@ export function getLastPlayedRound(matches: TournamentMatch[]): number | null {
   return last;
 }
 
-/**
- * Returns the lowest round number where not all matches are Finished.
- * If all rounds are finished, returns null.
- */
+export type { TopScorer };
+
 export function getNextRound(matches: TournamentMatch[]): number | null {
   const rounds = groupMatchesByRound(matches);
   for (const [round, ms] of [...rounds.entries()].sort(([a], [b]) => a - b)) {

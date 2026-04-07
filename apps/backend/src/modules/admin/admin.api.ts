@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { createUserInputSchema, type JwtPayload } from '@hattrictos-stats/shared';
 import { db } from '../../infrastructure/db/client';
 import { env } from '../../config/env';
-import { ownerOrCoOwnerGuard } from '../../middleware/jwt';
+import { ownerGuard, ownerOrCoOwnerGuard } from '../../middleware/jwt';
 import { errorToStatus } from '../../middleware/error-handler';
 import { createRateLimit } from '../../middleware/rate-limit';
 import type { LoggerEnv } from '../../middleware/logger';
@@ -17,6 +17,7 @@ import {
   createFetchTournamentDetails,
   createFetchTournamentFixtures,
   createFetchTournamentLeagueTable,
+  createFetchRaw,
 } from './use-cases/explore-chpp';
 import { createAuthRepository } from '../auth/infrastructure/auth.repository';
 import { createCreateUser } from '../auth/use-cases/create-user';
@@ -211,7 +212,7 @@ admin.get('/chpp/verify', ownerOrCoOwnerGuard, async (c) => {
  * Exploration endpoint — no data is persisted.
  * Requires owner or co_owner JWT.
  */
-admin.get('/chpp/match/:matchId', ownerOrCoOwnerGuard, async (c) => {
+admin.get('/chpp/match/:matchId', ownerGuard, async (c) => {
   const log = c.var.log;
   const matchId = Number(c.req.param('matchId'));
 
@@ -251,7 +252,7 @@ admin.get('/chpp/match/:matchId', ownerOrCoOwnerGuard, async (c) => {
  * NOTE: must be registered before /:tournamentId to avoid Hono capturing
  * "98765/fixtures" as the tournamentId param.
  */
-admin.get('/chpp/tournament/:tournamentId/fixtures', ownerOrCoOwnerGuard, async (c) => {
+admin.get('/chpp/tournament/:tournamentId/fixtures', ownerGuard, async (c) => {
   const log = c.var.log;
   const tournamentId = Number(c.req.param('tournamentId'));
 
@@ -292,7 +293,7 @@ admin.get('/chpp/tournament/:tournamentId/fixtures', ownerOrCoOwnerGuard, async 
  * NOTE: must be registered before /:tournamentId to avoid Hono capturing
  * "98765/table" as the tournamentId param.
  */
-admin.get('/chpp/tournament/:tournamentId/table', ownerOrCoOwnerGuard, async (c) => {
+admin.get('/chpp/tournament/:tournamentId/table', ownerGuard, async (c) => {
   const log = c.var.log;
   const tournamentId = Number(c.req.param('tournamentId'));
 
@@ -329,7 +330,7 @@ admin.get('/chpp/tournament/:tournamentId/table', ownerOrCoOwnerGuard, async (c)
  * Exploration endpoint — no data is persisted.
  * Requires owner or co_owner JWT.
  */
-admin.get('/chpp/tournament/:tournamentId', ownerOrCoOwnerGuard, async (c) => {
+admin.get('/chpp/tournament/:tournamentId', ownerGuard, async (c) => {
   const log = c.var.log;
   const tournamentId = Number(c.req.param('tournamentId'));
 
@@ -356,6 +357,55 @@ admin.get('/chpp/tournament/:tournamentId', ownerOrCoOwnerGuard, async (c) => {
   }
 
   log?.info('chpp_tournament_fetched', { tournamentId });
+  return c.json({ data: result.value });
+});
+
+/**
+ * POST /api/admin/chpp/raw
+ *
+ * Calls any CHPP endpoint with arbitrary parameters.
+ * Useful for exploring undocumented endpoints (e.g. tournamentmatchdetails).
+ * Exploration endpoint — no data is persisted.
+ * Requires owner or co_owner JWT.
+ *
+ * Body: { file: string, params: Record<string, string | number | boolean> }
+ */
+admin.post('/chpp/raw', ownerGuard, async (c) => {
+  const log = c.var.log;
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body.file !== 'string' || !body.file.trim()) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Body must include a non-empty "file" string.' },
+      400,
+    );
+  }
+
+  const file = body.file.trim();
+  const params: Record<string, string | number | boolean> =
+    body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+      ? (body.params as Record<string, string | number | boolean>)
+      : {};
+
+  let chppConfig: { consumerKey: string; consumerSecret: string };
+  let encryption: ReturnType<typeof createChppEncryption>;
+  try {
+    chppConfig = getChppConfig();
+    encryption = getEncryption();
+  } catch (e) {
+    return c.json({ code: 'INTERNAL_ERROR', message: (e as Error).message }, 500);
+  }
+
+  const tokenRepository = createChppTokenRepository(db, encryption);
+  const fetchRaw = createFetchRaw(chppConfig, tokenRepository);
+
+  const result = await fetchRaw(file, params);
+  if (!result.ok) {
+    log?.warn('chpp_raw_fetch_failed', { file, params, error: result.error });
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+
+  log?.info('chpp_raw_fetched', { file, params });
   return c.json({ data: result.value });
 });
 

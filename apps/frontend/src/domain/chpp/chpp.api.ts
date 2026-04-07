@@ -19,4 +19,11 @@ export const chppApi = {
 
   getTournamentLeagueTable: (tournamentId: string) =>
     request<{ data: unknown }>(`/admin/chpp/tournament/${tournamentId}/table`),
+
+  fetchRaw: (file: string, params: Record<string, string | number | boolean>) =>
+    request<{ data: unknown }>('/admin/chpp/raw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file, params }),
+    }),
 };

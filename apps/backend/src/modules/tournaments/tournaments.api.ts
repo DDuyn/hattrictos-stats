@@ -13,6 +13,8 @@ import { createRegisterTournament } from './use-cases/register-tournament';
 import { createSyncTournament } from './use-cases/sync-tournament';
 import { createListTournaments } from './use-cases/list-tournaments';
 import { createGetTournament } from './use-cases/get-tournament';
+import { createTeamsRepository } from '../teams/infrastructure/teams.repository';
+import { createPlayersRepository } from '../players/infrastructure/players.repository';
 
 type Env = { Variables: { jwtPayload: JwtPayload } } & LoggerEnv;
 
@@ -72,7 +74,9 @@ tournamentsApi.post('/', staffGuard, async (c) => {
 
   const tokenRepository = createChppTokenRepository(db, encryption);
   const tournamentRepository = createTournamentRepository(db);
-  const registerTournament = createRegisterTournament(chppConfig, tokenRepository, tournamentRepository);
+  const teamsRepository = createTeamsRepository(db);
+  const playersRepository = createPlayersRepository(db);
+  const registerTournament = createRegisterTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository);
 
   const result = await registerTournament({ htTournamentId: parsed.data.htTournamentId });
   if (!result.ok) {
@@ -107,16 +111,28 @@ tournamentsApi.post('/:id/sync', staffGuard, async (c) => {
   const tokenRepository = createChppTokenRepository(db, encryption);
   const tournamentRepository = createTournamentRepository(db);
 
-  const syncTournament = createSyncTournament(chppConfig, tokenRepository, tournamentRepository);
-
-  const result = await syncTournament(id);
-  if (!result.ok) {
-    log?.warn('tournament_sync_failed', { id, error: result.error });
-    return c.json(result.error, errorToStatus(result.error.code));
+  // Verify tournament exists before firing sync
+  const tournament = await tournamentRepository.findById(id);
+  if (!tournament) {
+    return c.json({ code: 'NOT_FOUND', message: `Tournament ${id} not found.` }, 404);
   }
 
-  log?.info('tournament_synced', { id });
-  return c.json({ synced: true });
+  const teamsRepository = createTeamsRepository(db);
+  const playersRepository = createPlayersRepository(db);
+  const syncTournament = createSyncTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository);
+
+  // Fire-and-forget: respond immediately, sync runs in background
+  syncTournament(id).then((result) => {
+    if (!result.ok) {
+      log?.warn('tournament_sync_failed', { id, error: result.error });
+    } else {
+      log?.info('tournament_synced', { id, matchesSynced: result.value.matchesSynced });
+    }
+  }).catch((err) => {
+    log?.error('tournament_sync_error', { id, error: String(err) });
+  });
+
+  return c.json({ synced: true, background: true }, 202);
 });
 
 /**

@@ -3,7 +3,7 @@ import { onMount } from 'solid-js';
 import { chppApi } from '../../domain/chpp/chpp.api';
 import { useToast } from '../../context/toast.context';
 
-type QueryType = 'match' | 'tournament';
+type QueryType = 'match' | 'tournament' | 'raw';
 
 interface ConnectionStatus {
   checked: boolean;
@@ -32,6 +32,11 @@ interface TournamentResult {
   standings: StandingsRow[];
 }
 
+export interface RawParam {
+  key: string;
+  value: string;
+}
+
 interface ChppExplorerState {
   queryType: QueryType;
   inputId: string;
@@ -40,6 +45,10 @@ interface ChppExplorerState {
   connection: ConnectionStatus;
   matchResult: unknown;
   tournamentResult: TournamentResult | null;
+  // Raw mode
+  rawFile: string;
+  rawParams: RawParam[];
+  rawResult: unknown;
   error: string | null;
 }
 
@@ -185,6 +194,9 @@ export function createChppExplorerCtrl() {
     connection: { checked: false, connected: false, teamName: null, htLoginName: null },
     matchResult: null,
     tournamentResult: null,
+    rawFile: 'tournamentmatchdetails',
+    rawParams: [{ key: 'matchID', value: '' }],
+    rawResult: null,
     error: null,
   });
 
@@ -216,8 +228,28 @@ export function createChppExplorerCtrl() {
   }
 
   function setQueryType(type: QueryType) {
-    setState({ queryType: type, matchResult: null, tournamentResult: null, error: null, inputId: '' });
+    setState({ queryType: type, matchResult: null, tournamentResult: null, rawResult: null, error: null, inputId: '' });
   }
+
+  // ─── Raw mode param helpers ──────────────────────────────────────────────
+
+  function addRawParam() {
+    setState('rawParams', (prev) => [...prev, { key: '', value: '' }]);
+  }
+
+  function removeRawParam(index: number) {
+    setState('rawParams', (prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function setRawParamKey(index: number, key: string) {
+    setState('rawParams', index, 'key', key);
+  }
+
+  function setRawParamValue(index: number, value: string) {
+    setState('rawParams', index, 'value', value);
+  }
+
+  // ─── Fetch handlers ─────────────────────────────────────────────────────
 
   async function handleFetch(e: Event) {
     e.preventDefault();
@@ -228,7 +260,7 @@ export function createChppExplorerCtrl() {
       return;
     }
 
-    setState({ loading: true, matchResult: null, tournamentResult: null, error: null });
+    setState({ loading: true, matchResult: null, tournamentResult: null, rawResult: null, error: null });
 
     try {
       if (state.queryType === 'match') {
@@ -258,5 +290,47 @@ export function createChppExplorerCtrl() {
     }
   }
 
-  return { state, setState, setQueryType, handleFetch, handleConnect };
+  async function handleRawFetch(e: Event) {
+    e.preventDefault();
+
+    const file = state.rawFile.trim();
+    if (!file) {
+      setState({ error: 'El campo "file" es obligatorio.' });
+      return;
+    }
+
+    // Build params object — skip empty keys, coerce numeric strings to numbers
+    const params: Record<string, string | number | boolean> = {};
+    for (const { key, value } of state.rawParams) {
+      const k = key.trim();
+      if (!k) continue;
+      const v = value.trim();
+      const n = Number(v);
+      params[k] = v !== '' && !isNaN(n) ? n : v;
+    }
+
+    setState({ loading: true, rawResult: null, error: null });
+
+    try {
+      const response = await chppApi.fetchRaw(file, params);
+      setState({ rawResult: response.data, loading: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error desconocido';
+      setState({ error: message, loading: false });
+      toast.error(message);
+    }
+  }
+
+  return {
+    state,
+    setState,
+    setQueryType,
+    handleFetch,
+    handleRawFetch,
+    addRawParam,
+    removeRawParam,
+    setRawParamKey,
+    setRawParamValue,
+    handleConnect,
+  };
 }

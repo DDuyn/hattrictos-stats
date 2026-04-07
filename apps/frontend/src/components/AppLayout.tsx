@@ -44,6 +44,9 @@ const BASE_ITEMS: NavItem[] = [
 
 const STAFF_ITEMS: NavItem[] = [
   { label: 'Gestión Torneos', href: '/admin/torneos', icon: CogIcon },
+];
+
+const OWNER_ITEMS: NavItem[] = [
   { label: 'CHPP Explorer', href: '/chpp-explorer', icon: MagnifyingGlassIcon },
 ];
 
@@ -53,7 +56,12 @@ export function AppLayout(props: ParentProps) {
   const navItems = createMemo<NavItem[]>(() => {
     const role = auth.user()?.role ?? null;
     const isStaff = role === 'owner' || role === 'co_owner' || role === 'admin';
-    return isStaff ? [...BASE_ITEMS, ...STAFF_ITEMS] : BASE_ITEMS;
+    const isOwner = role === 'owner';
+    return [
+      ...BASE_ITEMS,
+      ...(isStaff ? STAFF_ITEMS : []),
+      ...(isOwner ? OWNER_ITEMS : []),
+    ];
   });
 
   return (

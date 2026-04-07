@@ -7,6 +7,7 @@ import {
   getLastPlayedRound,
   getNextRound,
   formatMatchDate,
+  type TopScorer,
 } from './tournaments.ctrl';
 import type { TournamentStanding, TournamentMatch } from '../../domain/tournaments/tournaments.api';
 
@@ -127,24 +128,71 @@ function RoundCard(props: { label: string; matches: TournamentMatch[] }) {
   );
 }
 
-// ─── Top scorers card (placeholder until data is available) ──────────────────
+// ─── Top scorers card ─────────────────────────────────────────────────────────
 
-function TopScorersCard() {
+const TOP_SCORERS_PREVIEW = 5;
+
+function TopScorersCard(props: { scorers: TopScorer[]; tournamentId: string }) {
+  const preview = () => props.scorers.slice(0, TOP_SCORERS_PREVIEW);
+  const hasMore = () => props.scorers.length > TOP_SCORERS_PREVIEW;
+
   return (
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col flex-1">
       <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           Goleadores
         </span>
+        <Show when={hasMore()}>
+          <A
+            href={`/torneos/${props.tournamentId}/estadisticas`}
+            class="text-xs text-primary hover:underline"
+          >
+            Ver todos
+          </A>
+        </Show>
       </div>
-      <div class="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-3">
-        <svg class="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" />
-        </svg>
-        <p class="text-sm text-gray-400 text-center">
-          Estadísticas de goleadores<br />disponibles próximamente
-        </p>
-      </div>
+      <Show
+        when={props.scorers.length > 0}
+        fallback={
+          <div class="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-3">
+            <svg class="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" />
+            </svg>
+            <p class="text-sm text-gray-400 text-center">
+              Aún no hay goles registrados
+            </p>
+          </div>
+        }
+      >
+        <div class="divide-y divide-gray-50">
+          <For each={preview()}>
+            {(scorer, i) => (
+              <div class="flex items-center gap-3 px-4 py-2.5">
+                <span class="text-xs font-mono text-gray-400 w-4 text-right shrink-0">
+                  {i() + 1}
+                </span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">{scorer.playerName}</p>
+                </div>
+                <span class="text-sm font-bold text-gray-900 shrink-0">{scorer.goals}</span>
+              </div>
+            )}
+          </For>
+        </div>
+        <Show when={hasMore()}>
+          <div class="border-t border-gray-100">
+            <A
+              href={`/torneos/${props.tournamentId}/estadisticas`}
+              class="flex items-center justify-center gap-1 px-4 py-2.5 text-xs text-gray-500 hover:text-primary hover:bg-gray-50 transition-colors"
+            >
+              Ver los {props.scorers.length} goleadores
+              <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </A>
+          </div>
+        </Show>
+      </Show>
     </div>
   );
 }
@@ -257,7 +305,7 @@ export default function TournamentDetail() {
                         matches={lastPlayedMatches()}
                       />
                     </Show>
-                    <TopScorersCard />
+                    <TopScorersCard scorers={detail.topScorers ?? []} tournamentId={t.id} />
                   </section>
 
                 </div>

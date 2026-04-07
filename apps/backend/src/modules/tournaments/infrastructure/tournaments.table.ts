@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 // ─── tournaments ─────────────────────────────────────────────────────────────
 
@@ -85,7 +85,78 @@ export const tournamentMatchesTable = sqliteTable('tournament_matches', {
   awayGoals: integer('away_goals'),
   /** "Finished", "Upcoming", etc. */
   status: text('status').notNull().default('Upcoming'),
+  /**
+   * 1 = matchdetails + matchlineup synced, 0 = pending.
+   * Only set to 1 for Finished matches after fetching goals + appearances.
+   */
+  detailsSynced: integer('details_synced').notNull().default(0),
 });
 
 export type TournamentMatchRow = typeof tournamentMatchesTable.$inferSelect;
 export type NewTournamentMatchRow = typeof tournamentMatchesTable.$inferInsert;
+
+// ─── match_events ─────────────────────────────────────────────────────────────
+
+/**
+ * Relevant match events — primarily goals (EventTypeID 100-199).
+ * Populated from matchdetails CHPP endpoint (version 3.1, sourceSystem=HTOIntegrated).
+ * Deleted and re-inserted if the match is re-synced (should not happen normally).
+ *
+ * For goals:
+ *   subjectPlayerId/Name = scorer
+ *   objectPlayerId/Name  = assist provider
+ */
+export const matchEventsTable = sqliteTable('match_events', {
+  id: text('id').primaryKey(),
+  matchId: text('match_id')
+    .notNull()
+    .references(() => tournamentMatchesTable.id, { onDelete: 'cascade' }),
+  tournamentId: text('tournament_id')
+    .notNull()
+    .references(() => tournamentsTable.id, { onDelete: 'cascade' }),
+  /** CHPP EventTypeID — 100-199 = goals */
+  eventTypeId: integer('event_type_id').notNull(),
+  minute: integer('minute').notNull(),
+  subjectPlayerId: integer('subject_player_id'),
+  subjectPlayerName: text('subject_player_name'),
+  subjectTeamId: integer('subject_team_id'),
+  objectPlayerId: integer('object_player_id'),
+  objectPlayerName: text('object_player_name'),
+});
+
+export type MatchEventRow = typeof matchEventsTable.$inferSelect;
+export type NewMatchEventRow = typeof matchEventsTable.$inferInsert;
+
+// ─── match_appearances ────────────────────────────────────────────────────────
+
+/**
+ * Player appearances per match — starters and substitutes.
+ * Populated from matchlineup CHPP endpoint (version 2.1, sourceSystem=HTOIntegrated).
+ *
+ * minuteIn:  0 for starters, substitution minute for subs
+ * minuteOut: substitution minute if replaced, null if played until end
+ * ratingStars: player rating for that match (from Lineup section)
+ */
+export const matchAppearancesTable = sqliteTable('match_appearances', {
+  id: text('id').primaryKey(),
+  matchId: text('match_id')
+    .notNull()
+    .references(() => tournamentMatchesTable.id, { onDelete: 'cascade' }),
+  tournamentId: text('tournament_id')
+    .notNull()
+    .references(() => tournamentsTable.id, { onDelete: 'cascade' }),
+  htPlayerId: integer('ht_player_id').notNull(),
+  playerName: text('player_name').notNull(),
+  htTeamId: integer('ht_team_id').notNull(),
+  /** CHPP RoleID: 100=GK, 101-113=field positions, 114-118=substitutes */
+  roleId: integer('role_id').notNull(),
+  /** CHPP BehaviourID: 0=Normal, 1=Offensive, 2=Defensive, 3=ToMiddle, 4=ToWing */
+  behaviour: integer('behaviour').notNull().default(0),
+  minuteIn: integer('minute_in').notNull().default(0),
+  /** null = played until full time */
+  minuteOut: integer('minute_out'),
+  ratingStars: real('rating_stars'),
+});
+
+export type MatchAppearanceRow = typeof matchAppearancesTable.$inferSelect;
+export type NewMatchAppearanceRow = typeof matchAppearancesTable.$inferInsert;

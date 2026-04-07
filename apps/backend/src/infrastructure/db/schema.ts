@@ -4,4 +4,14 @@ export {
   tournamentsTable,
   tournamentStandingsTable,
   tournamentMatchesTable,
+  matchEventsTable,
+  matchAppearancesTable,
 } from '../../modules/tournaments/infrastructure/tournaments.table';
+export {
+  teamsTable,
+  tournamentTeamSeasonsTable,
+} from '../../modules/teams/infrastructure/teams.table';
+export {
+  playersTable,
+  playerTeamHistoryTable,
+} from '../../modules/players/infrastructure/players.table';

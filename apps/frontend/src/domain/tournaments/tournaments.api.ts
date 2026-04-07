@@ -46,10 +46,18 @@ export interface TournamentMatch {
   status: string;
 }
 
+export interface TopScorer {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  goals: number;
+}
+
 export interface TournamentDetail {
   tournament: Tournament;
   standings: TournamentStanding[];
   matches: TournamentMatch[];
+  topScorers: TopScorer[];
 }
 
 // ─── API client ───────────────────────────────────────────────────────────────

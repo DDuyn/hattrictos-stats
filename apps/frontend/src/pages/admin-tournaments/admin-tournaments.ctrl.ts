@@ -83,13 +83,52 @@ export function createAdminTournamentsCtrl() {
   async function handleSync(id: string) {
     setState('syncingIds', id, true);
     try {
+      // Capture lastSyncedAt before sync so we can detect when it changes
+      const before = state.tournaments.find((t) => t.id === id)?.lastSyncedAt ?? null;
+
       await tournamentsApi.sync(id);
-      toast.success('Torneo sincronizado correctamente');
-      await loadTournaments();
+
+      // Poll GET /tournaments until lastSyncedAt changes (max 3 min, every 2.5s)
+      const INTERVAL = 2500;
+      const MAX_ATTEMPTS = 72; // 3 min
+      let attempts = 0;
+
+      const poll = async (): Promise<void> => {
+        attempts++;
+        try {
+          const list = await tournamentsApi.list();
+          const updated = list.find((t) => t.id === id);
+          if (updated && updated.lastSyncedAt !== before) {
+            // Sync finished — refresh list and stop
+            const inputs: Record<string, { promotionSlots: string; relegationSlots: string }> = {};
+            for (const t of list) {
+              inputs[t.id] = {
+                promotionSlots: String(t.promotionSlots),
+                relegationSlots: String(t.relegationSlots),
+              };
+            }
+            setState({ tournaments: list, configInputs: inputs });
+            setState('syncingIds', id, false);
+            toast.success('Sincronización completada');
+            return;
+          }
+        } catch {
+          // ignore polling errors, keep trying
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+          setState('syncingIds', id, false);
+          toast.error('Tiempo de espera agotado — comprueba los logs del servidor');
+          return;
+        }
+
+        setTimeout(poll, INTERVAL);
+      };
+
+      setTimeout(poll, INTERVAL);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al sincronizar');
-    } finally {
       setState('syncingIds', id, false);
+      toast.error(err instanceof Error ? err.message : 'Error al sincronizar');
     }
   }
 

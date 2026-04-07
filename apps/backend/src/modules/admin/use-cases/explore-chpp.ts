@@ -26,6 +26,11 @@ export type FetchTournamentLeagueTable = (
   tournamentId: number,
 ) => Promise<Result<Record<string, unknown>, AppError>>;
 
+export type FetchRaw = (
+  file: string,
+  params: Record<string, string | number | boolean>,
+) => Promise<Result<Record<string, unknown>, AppError>>;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function getActiveClient(
@@ -140,5 +145,28 @@ export function createFetchTournamentLeagueTable(
       file: 'tournamentleaguetables',
       tournamentID: tournamentId,
     });
+  };
+}
+
+/**
+ * Fetches any CHPP endpoint with arbitrary parameters.
+ *
+ * Exploration endpoint — lets us probe undocumented or new endpoints
+ * without code changes. Pass `file` and any extra key-value params.
+ *
+ * Example: file=tournamentmatchdetails, matchID=123456789
+ */
+export function createFetchRaw(
+  chppClientConfig: { consumerKey: string; consumerSecret: string },
+  tokenRepository: ChppTokenRepository,
+): FetchRaw {
+  return async (
+    file: string,
+    params: Record<string, string | number | boolean>,
+  ): Promise<Result<Record<string, unknown>, AppError>> => {
+    const clientResult = await getActiveClient(chppClientConfig, tokenRepository);
+    if (!clientResult.ok) return clientResult;
+
+    return clientResult.value.fetch({ file, ...params });
   };
 }

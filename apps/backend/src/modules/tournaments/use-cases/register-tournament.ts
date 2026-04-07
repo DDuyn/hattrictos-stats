@@ -3,6 +3,8 @@ import type { Result, AppError } from '@hattrictos-stats/shared';
 import { ok, err, conflictError, notFoundError } from '@hattrictos-stats/shared';
 import type { TournamentRepository } from '../infrastructure/tournaments.repository';
 import type { ChppTokenRepository } from '../../admin/infrastructure/chpp-token.repository';
+import type { TeamsRepository } from '../../teams/infrastructure/teams.repository';
+import type { PlayersRepository } from '../../players/infrastructure/players.repository';
 import { createChppClient } from '../../../infrastructure/chpp/chpp-client';
 import { createSyncTournament } from './sync-tournament';
 
@@ -37,6 +39,8 @@ export function createRegisterTournament(
   chppClientConfig: { consumerKey: string; consumerSecret: string },
   tokenRepository: ChppTokenRepository,
   tournamentRepository: TournamentRepository,
+  teamsRepository: TeamsRepository,
+  playersRepository: PlayersRepository,
 ): RegisterTournament {
   return async ({ htTournamentId }) => {
     // 1. Duplicate check
@@ -86,7 +90,7 @@ export function createRegisterTournament(
     });
 
     // 4. Initial sync (standings + fixtures) — fire and don't fail the register if sync errors
-    const sync = createSyncTournament(chppClientConfig, tokenRepository, tournamentRepository);
+    const sync = createSyncTournament(chppClientConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository);
     await sync(id);
 
     return ok({ id, htTournamentId, name });
