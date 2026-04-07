@@ -3,6 +3,7 @@ import { ok, err, notFoundError } from '@hattrictos-stats/shared';
 import type {
   TournamentRepository,
   TopScorerRow,
+  TopMinutesRow,
   StandingWithTeam,
   MatchWithTeams,
 } from '../infrastructure/tournaments.repository';
@@ -13,6 +14,7 @@ export interface TournamentDetail {
   standings: StandingWithTeam[];
   matches: MatchWithTeams[];
   topScorers: TopScorerRow[];
+  topMinutes: TopMinutesRow[];
 }
 
 export type GetTournament = (id: string) => Promise<Result<TournamentDetail, AppError>>;
@@ -31,12 +33,13 @@ export function createGetTournament(
       return err(notFoundError(`Tournament ${id} not found.`));
     }
 
-    const [standings, matches, topScorers] = await Promise.all([
+    const [standings, matches, topScorers, topMinutes] = await Promise.all([
       tournamentRepository.getStandings(id),
       tournamentRepository.getMatches(id),
       tournamentRepository.getTopScorers(id, 10),
+      tournamentRepository.getTopMinutes(id, 25),
     ]);
 
-    return ok({ tournament, standings, matches, topScorers });
+    return ok({ tournament, standings, matches, topScorers, topMinutes });
   };
 }

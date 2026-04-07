@@ -2,7 +2,7 @@ import { For, Show } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
 import { createStore } from 'solid-js/store';
 import { onMount } from 'solid-js';
-import { tournamentsApi, type TournamentDetail } from '../../domain/tournaments/tournaments.api';
+import { tournamentsApi, type TournamentDetail, type TopMinutes } from '../../domain/tournaments/tournaments.api';
 
 // ─── Ctrl ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +47,7 @@ export default function TournamentStats() {
           const detail = ctrl.state.detail!;
           const t = detail.tournament;
           const scorers = detail.topScorers ?? [];
+          const topMinutes = detail.topMinutes ?? [];
 
           return (
             <>
@@ -74,43 +75,87 @@ export default function TournamentStats() {
                 <p class="text-sm text-gray-500 mt-0.5">{t.name}</p>
               </div>
 
-              {/* Top scorers table */}
-              <section>
-                <h2 class="text-base font-semibold text-gray-900 mb-3">Goleadores</h2>
-                <Show
-                  when={scorers.length > 0}
-                  fallback={
-                    <div class="bg-white border border-gray-200 rounded-lg px-4 py-10 text-center text-sm text-gray-400">
-                      Aún no hay goles registrados. Sincroniza el torneo para obtener estadísticas.
+              <div class="flex flex-col gap-10">
+
+                {/* Top scorers */}
+                <section>
+                  <h2 class="text-base font-semibold text-gray-900 mb-3">Goleadores</h2>
+                  <Show
+                    when={scorers.length > 0}
+                    fallback={
+                      <div class="bg-white border border-gray-200 rounded-lg px-4 py-10 text-center text-sm text-gray-400">
+                        Aún no hay goles registrados. Sincroniza el torneo para obtener estadísticas.
+                      </div>
+                    }
+                  >
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <table class="w-full text-sm">
+                        <thead>
+                          <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
+                            <th class="px-4 py-2.5 text-left w-8">#</th>
+                            <th class="px-4 py-2.5 text-left">Jugador</th>
+                            <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
+                            <th class="px-4 py-2.5 text-right font-semibold text-gray-600">Goles</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={scorers}>
+                            {(scorer, i) => (
+                              <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
+                                <td class="px-4 py-2.5 font-medium text-gray-900">{scorer.playerName}</td>
+                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{scorer.teamName}</td>
+                                <td class="px-4 py-2.5 text-right font-bold text-gray-900">{scorer.goals}</td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
                     </div>
-                  }
-                >
-                  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm">
-                      <thead>
-                        <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
-                          <th class="px-4 py-2.5 text-left w-8">#</th>
-                          <th class="px-4 py-2.5 text-left">Jugador</th>
-                          <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
-                          <th class="px-4 py-2.5 text-right font-semibold text-gray-600">Goles</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <For each={scorers}>
-                          {(scorer, i) => (
-                            <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                              <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
-                              <td class="px-4 py-2.5 font-medium text-gray-900">{scorer.playerName}</td>
-                              <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{scorer.teamName}</td>
-                              <td class="px-4 py-2.5 text-right font-bold text-gray-900">{scorer.goals}</td>
-                            </tr>
-                          )}
-                        </For>
-                      </tbody>
-                    </table>
-                  </div>
-                </Show>
-              </section>
+                  </Show>
+                </section>
+
+                {/* Top minutes played */}
+                <section>
+                  <h2 class="text-base font-semibold text-gray-900 mb-3">Minutos jugados</h2>
+                  <Show
+                    when={topMinutes.length > 0}
+                    fallback={
+                      <div class="bg-white border border-gray-200 rounded-lg px-4 py-10 text-center text-sm text-gray-400">
+                        No hay datos de minutos. Sincroniza el torneo para obtener estadísticas.
+                      </div>
+                    }
+                  >
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <table class="w-full text-sm">
+                        <thead>
+                          <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
+                            <th class="px-4 py-2.5 text-left w-8">#</th>
+                            <th class="px-4 py-2.5 text-left">Jugador</th>
+                            <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
+                            <th class="px-4 py-2.5 text-center hidden md:table-cell">PJ</th>
+                            <th class="px-4 py-2.5 text-right font-semibold text-gray-600">Min</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={topMinutes}>
+                            {(row: TopMinutes, i) => (
+                              <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
+                                <td class="px-4 py-2.5 font-medium text-gray-900">{row.playerName}</td>
+                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
+                                <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.appearances}</td>
+                                <td class="px-4 py-2.5 text-right font-bold text-gray-900">{row.minutes}'</td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </Show>
+                </section>
+
+              </div>
             </>
           );
         }}

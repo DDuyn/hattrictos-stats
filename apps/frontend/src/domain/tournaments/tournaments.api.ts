@@ -90,11 +90,21 @@ export interface TopScorer {
   goals: number;
 }
 
+export interface TopMinutes {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  teamName: string;
+  minutes: number;
+  appearances: number;
+}
+
 export interface TournamentDetail {
   tournament: Tournament;
   standings: TournamentStanding[];
   matches: TournamentMatch[];
   topScorers: TopScorer[];
+  topMinutes: TopMinutes[];
 }
 
 // ─── API client ───────────────────────────────────────────────────────────────

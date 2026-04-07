@@ -53,6 +53,15 @@ export interface TopScorerRow {
   goals: number;
 }
 
+export interface TopMinutesRow {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  teamName: string;
+  minutes: number;
+  appearances: number;
+}
+
 export interface TournamentRepository {
   /** Check whether a tournament with the given Hattrick ID is already registered */
   existsByHtId(htTournamentId: number): Promise<boolean>;
@@ -133,6 +142,9 @@ export interface TournamentRepository {
 
   /** Return top scorers for a tournament (goals = count of EventTypeID 100-199) */
   getTopScorers(tournamentId: string, limit?: number): Promise<TopScorerRow[]>;
+
+  /** Return players ranked by total minutes played in the tournament */
+  getTopMinutes(tournamentId: string, limit?: number): Promise<TopMinutesRow[]>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -465,6 +477,43 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           teamName: r.teamName,
           goals: r.goals,
         }));
+    },
+
+    async getTopMinutes(tournamentId, limit = 25) {
+      // Minutes = SUM(COALESCE(minute_out, 90) - minute_in) per player
+      // Joined across all matches of the tournament via tournamentId column
+      const rows = await db
+        .select({
+          htPlayerId: matchAppearancesTable.htPlayerId,
+          playerName: sql<string>`COALESCE(${playersTable.firstName} || ' ' || ${playersTable.lastName}, 'Desconocido')`,
+          htTeamId: matchAppearancesTable.htTeamId,
+          teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchAppearancesTable.htTeamId})`,
+          minutes: sql<number>`SUM(COALESCE(${matchAppearancesTable.minuteOut}, 90) - ${matchAppearancesTable.minuteIn})`,
+          appearances: sql<number>`COUNT(DISTINCT ${matchAppearancesTable.matchId})`,
+        })
+        .from(matchAppearancesTable)
+        .leftJoin(playersTable, eq(matchAppearancesTable.htPlayerId, playersTable.htPlayerId))
+        .leftJoin(teamsTable, eq(matchAppearancesTable.htTeamId, teamsTable.htTeamId))
+        .where(eq(matchAppearancesTable.tournamentId, tournamentId))
+        .groupBy(
+          matchAppearancesTable.htPlayerId,
+          matchAppearancesTable.htTeamId,
+          playersTable.firstName,
+          playersTable.lastName,
+          teamsTable.name,
+        )
+        .orderBy(desc(sql`SUM(COALESCE(${matchAppearancesTable.minuteOut}, 90) - ${matchAppearancesTable.minuteIn})`))
+        .limit(limit)
+        .all();
+
+      return rows.map((r) => ({
+        htPlayerId: r.htPlayerId,
+        playerName: r.playerName,
+        htTeamId: r.htTeamId,
+        teamName: r.teamName,
+        minutes: r.minutes,
+        appearances: r.appearances,
+      }));
     },
   };
 }
