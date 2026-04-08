@@ -170,8 +170,8 @@ export type NewMatchAppearanceRow = typeof matchAppearancesTable.$inferInsert;
  *
  * BookingType values (Hattrick Arena / HTOIntegrated):
  *   1 = yellow card
- *   2 = yellow-red (second yellow → red)
- *   3 = red card (straight red)
+ *   2 = red card (direct red)
+ *   3 = yellow-red (second yellow → red) — not yet observed in Arena data
  */
 export const matchBookingsTable = sqliteTable('match_bookings', {
   id: text('id').primaryKey(),

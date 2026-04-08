@@ -577,6 +577,7 @@ export function createTournamentRepository(db: DB): TournamentRepository {
     },
 
     async getTopCards(tournamentId, limit = 25) {
+      // BookingType (Hattrick Arena): 1 = yellow, 2 = red (direct), 3 = yellow-red (2nd yellow, not yet observed)
       const rows = await db
         .select({
           htPlayerId: matchBookingsTable.htPlayerId,
@@ -584,8 +585,8 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           htTeamId: matchBookingsTable.htTeamId,
           teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchBookingsTable.htTeamId})`,
           yellowCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 1 THEN 1 ELSE 0 END)`,
-          yellowRedCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 2 THEN 1 ELSE 0 END)`,
-          redCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 3 THEN 1 ELSE 0 END)`,
+          yellowRedCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 3 THEN 1 ELSE 0 END)`,
+          redCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 2 THEN 1 ELSE 0 END)`,
           totalCards: sql<number>`COUNT(*)`,
         })
         .from(matchBookingsTable)

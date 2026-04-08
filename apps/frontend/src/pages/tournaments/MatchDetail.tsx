@@ -109,10 +109,12 @@ function GoalTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
 
 /**
  * Inline card indicator shown next to a player's name in the lineup.
- * bookingType: 1 = yellow, 2 = yellow-red (2nd yellow), 3 = red
+ * BookingType (Hattrick Arena): 1 = yellow, 2 = red (direct)
+ * BookingType 3 = yellow-red (2nd yellow) — not yet observed in Arena data
  */
 function CardBadge(props: { bookingType: number; minute: number }) {
   const isRed = props.bookingType >= 2;
+  const label = props.bookingType === 3 ? '2A' : isRed ? 'R' : 'A';
   return (
     <span
       class="inline-block ml-1.5 text-xs font-mono rounded px-1 py-0.5 leading-none"
@@ -121,7 +123,7 @@ function CardBadge(props: { bookingType: number; minute: number }) {
         color: isRed ? '#dc2626' : '#92400e',
       }}
     >
-      {props.bookingType === 2 ? '2A' : isRed ? 'R' : 'A'}{props.minute}'
+      {label}{props.minute}'
     </span>
   );
 }
