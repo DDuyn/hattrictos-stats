@@ -68,84 +68,33 @@ function formatMatchDate(dateStr: string): string {
   }
 }
 
-// ─── Events timeline ──────────────────────────────────────────────────────────
-
-type TimelineItem =
-  | { kind: 'goal'; minute: number; teamId: number; playerName: string }
-  | { kind: 'booking'; minute: number; teamId: number; playerName: string; bookingType: number };
-
-function bookingLabel(bookingType: number): string {
-  if (bookingType === 1) return 'Amarilla';
-  if (bookingType === 2) return '2ª amarilla';
-  if (bookingType === 3) return 'Roja';
-  return 'Tarjeta';
-}
+// ─── Goals timeline ───────────────────────────────────────────────────────────
 
 /**
  * Three-column layout: [home side] [minute] [away side]
- * Goals and bookings merged and sorted by minute.
+ * Only goals — no cards, no ball icon.
  */
-function EventTimeline(props: {
-  events: MatchEvent[];
-  bookings: MatchBooking[];
-  homeTeamId: number;
-}) {
-  const items = (): TimelineItem[] => {
-    const goals: TimelineItem[] = props.events.map((ev) => ({
-      kind: 'goal',
-      minute: ev.minute,
-      teamId: ev.subjectTeamId ?? 0,
-      playerName: ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`,
-    }));
-    const cards: TimelineItem[] = props.bookings.map((b) => ({
-      kind: 'booking',
-      minute: b.minute,
-      teamId: b.htTeamId,
-      playerName: b.playerName,
-      bookingType: b.bookingType,
-    }));
-    return [...goals, ...cards].sort((a, b) => a.minute - b.minute);
-  };
-
+function GoalTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
   return (
     <div class="flex flex-col divide-y divide-gray-50">
-      <For each={items()}>
-        {(item) => {
-          const isHome = item.teamId === props.homeTeamId;
+      <For each={props.events}>
+        {(ev) => {
+          const isHome = ev.subjectTeamId === props.homeTeamId;
+          const name = ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`;
           return (
             <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-4 py-2.5">
               {/* Home column */}
               <div class="flex items-center gap-2 justify-end min-w-0">
                 <Show when={isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate text-right">
-                    {item.kind === 'goal' ? '⚽ ' : ''}{item.playerName}
-                    {item.kind === 'booking' && (
-                      <span
-                        class="ml-1.5 text-xs font-normal"
-                        style={{ color: item.bookingType === 1 ? '#ca8a04' : '#dc2626' }}
-                      >
-                        {bookingLabel(item.bookingType)}
-                      </span>
-                    )}
-                  </span>
+                  <span class="text-sm font-medium text-gray-900 truncate text-right">{name}</span>
                 </Show>
               </div>
               {/* Minute — always centered */}
-              <span class="text-xs font-mono text-gray-400 w-8 text-center shrink-0">{item.minute}'</span>
+              <span class="text-xs font-mono text-gray-400 w-8 text-center shrink-0">{ev.minute}'</span>
               {/* Away column */}
               <div class="flex items-center gap-2 justify-start min-w-0">
                 <Show when={!isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate">
-                    {item.kind === 'goal' ? '⚽ ' : ''}{item.playerName}
-                    {item.kind === 'booking' && (
-                      <span
-                        class="ml-1.5 text-xs font-normal"
-                        style={{ color: item.bookingType === 1 ? '#ca8a04' : '#dc2626' }}
-                      >
-                        {bookingLabel(item.bookingType)}
-                      </span>
-                    )}
-                  </span>
+                  <span class="text-sm font-medium text-gray-900 truncate">{name}</span>
                 </Show>
               </div>
             </div>
@@ -156,11 +105,40 @@ function EventTimeline(props: {
   );
 }
 
+// ─── Card badge ───────────────────────────────────────────────────────────────
+
+/**
+ * Inline card indicator shown next to a player's name in the lineup.
+ * bookingType: 1 = yellow, 2 = yellow-red (2nd yellow), 3 = red
+ */
+function CardBadge(props: { bookingType: number; minute: number }) {
+  const isRed = props.bookingType >= 2;
+  return (
+    <span
+      class="inline-block ml-1.5 text-xs font-mono rounded px-1 py-0.5 leading-none"
+      style={{
+        background: isRed ? '#fee2e2' : '#fef9c3',
+        color: isRed ? '#dc2626' : '#92400e',
+      }}
+    >
+      {props.bookingType === 2 ? '2A' : isRed ? 'R' : 'A'}{props.minute}'
+    </span>
+  );
+}
+
 // ─── Lineup table ─────────────────────────────────────────────────────────────
 
-function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
+function LineupTable(props: {
+  appearances: MatchAppearance[];
+  bookings: MatchBooking[];
+  label: string;
+}) {
   const starters = () => props.appearances.filter((a) => a.minuteIn === 0);
   const subs = () => props.appearances.filter((a) => a.minuteIn > 0);
+
+  /** All bookings for a given player (there can be >1 in edge cases) */
+  const bookingsFor = (htPlayerId: number) =>
+    props.bookings.filter((b) => b.htPlayerId === htPlayerId);
 
   return (
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -185,6 +163,9 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
                     <Show when={p.minuteOut !== null}>
                       <span class="text-xs text-gray-400 ml-1.5">↓{p.minuteOut}'</span>
                     </Show>
+                    <For each={bookingsFor(p.htPlayerId)}>
+                      {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} />}
+                    </For>
                   </td>
                   <td class="px-3 py-2.5 text-right whitespace-nowrap">
                     <Show when={p.ratingStars !== null}>
@@ -208,7 +189,12 @@ function LineupTable(props: { appearances: MatchAppearance[]; label: string }) {
                         ↑{p.minuteIn}'
                       </span>
                     </td>
-                    <td class="px-3 py-2.5 font-medium text-gray-900">{p.playerName}</td>
+                    <td class="px-3 py-2.5 font-medium text-gray-900">
+                      {p.playerName}
+                      <For each={bookingsFor(p.htPlayerId)}>
+                        {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} />}
+                      </For>
+                    </td>
                     <td class="px-3 py-2.5 text-right whitespace-nowrap">
                       <Show when={p.ratingStars !== null}>
                         <span class="text-xs font-mono text-amber-600">{p.ratingStars!.toFixed(1)}</span>
@@ -300,19 +286,19 @@ export default function MatchDetailPage() {
                 </div>
               </div>
 
-              {/* Events + Lineups */}
+              {/* Goals + Lineups */}
               <div class="flex flex-col lg:flex-row gap-8">
 
-                {/* Events (goals + tarjetas) */}
+                {/* Goals */}
                 <section class="lg:flex-[1] min-w-0">
-                  <h2 class="text-base font-semibold text-gray-900 mb-3">Eventos</h2>
+                  <h2 class="text-base font-semibold text-gray-900 mb-3">Goles</h2>
                   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <Show
-                      when={d.events.length > 0 || d.bookings.length > 0}
+                      when={d.events.length > 0}
                       fallback={
                         <div class="px-4 py-8 text-center text-sm text-gray-400">
                           <Show when={finished} fallback="Partido no disputado aún">
-                            Sin eventos registrados
+                            Sin goles registrados
                           </Show>
                         </div>
                       }
@@ -323,7 +309,7 @@ export default function MatchDetailPage() {
                         <div class="w-8" />
                         <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide pl-2">{m.awayTeamName}</div>
                       </div>
-                      <EventTimeline events={d.events} bookings={d.bookings ?? []} homeTeamId={m.homeTeamId} />
+                      <GoalTimeline events={d.events} homeTeamId={m.homeTeamId} />
                     </Show>
                   </div>
                 </section>
@@ -343,8 +329,16 @@ export default function MatchDetailPage() {
                     }
                   >
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <LineupTable appearances={d.homeAppearances} label={m.homeTeamName} />
-                      <LineupTable appearances={d.awayAppearances} label={m.awayTeamName} />
+                      <LineupTable
+                        appearances={d.homeAppearances}
+                        bookings={(d.bookings ?? []).filter((b) => b.htTeamId === m.homeTeamId)}
+                        label={m.homeTeamName}
+                      />
+                      <LineupTable
+                        appearances={d.awayAppearances}
+                        bookings={(d.bookings ?? []).filter((b) => b.htTeamId === m.awayTeamId)}
+                        label={m.awayTeamName}
+                      />
                     </div>
                   </Show>
                 </section>
