@@ -6,16 +6,19 @@ import {
   tournamentMatchesTable,
   matchEventsTable,
   matchAppearancesTable,
+  matchBookingsTable,
   type TournamentRow,
   type TournamentStandingRow,
   type TournamentMatchRow,
   type MatchEventRow,
   type MatchAppearanceRow,
+  type MatchBookingRow,
   type NewTournamentRow,
   type NewTournamentStandingRow,
   type NewTournamentMatchRow,
   type NewMatchEventRow,
   type NewMatchAppearanceRow,
+  type NewMatchBookingRow,
 } from './tournaments.table';
 import { teamsTable } from '../../teams/infrastructure/teams.table';
 import { playersTable } from '../../players/infrastructure/players.table';
@@ -43,6 +46,23 @@ export interface MatchEventWithPlayers extends Omit<MatchEventRow, never> {
 export interface MatchAppearanceWithNames extends Omit<MatchAppearanceRow, never> {
   playerName: string;
   teamName: string;
+}
+
+/** Match booking row augmented with player and team name resolved via JOIN */
+export interface MatchBookingWithPlayer extends Omit<MatchBookingRow, never> {
+  playerName: string;
+  teamName: string;
+}
+
+export interface TopCardRow {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  teamName: string;
+  yellowCards: number;
+  yellowRedCards: number;
+  redCards: number;
+  totalCards: number;
 }
 
 export interface TopScorerRow {
@@ -145,6 +165,18 @@ export interface TournamentRepository {
 
   /** Return players ranked by total minutes played in the tournament */
   getTopMinutes(tournamentId: string, limit?: number): Promise<TopMinutesRow[]>;
+
+  /**
+   * Replace match bookings (cards) for a single match.
+   * Deletes existing rows then inserts new ones.
+   */
+  replaceMatchBookings(matchId: string, rows: NewMatchBookingRow[]): Promise<void>;
+
+  /** Return bookings for a single match with player and team names resolved via JOIN */
+  getMatchBookings(matchId: string): Promise<MatchBookingWithPlayer[]>;
+
+  /** Return players ranked by total cards in the tournament */
+  getTopCards(tournamentId: string, limit?: number): Promise<TopCardRow[]>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -513,6 +545,73 @@ export function createTournamentRepository(db: DB): TournamentRepository {
         teamName: r.teamName,
         minutes: r.minutes,
         appearances: r.appearances,
+      }));
+    },
+
+    async replaceMatchBookings(matchId, rows) {
+      await db.delete(matchBookingsTable).where(eq(matchBookingsTable.matchId, matchId));
+      if (rows.length > 0) {
+        await db.insert(matchBookingsTable).values(rows);
+      }
+    },
+
+    async getMatchBookings(matchId) {
+      return db
+        .select({
+          id: matchBookingsTable.id,
+          matchId: matchBookingsTable.matchId,
+          tournamentId: matchBookingsTable.tournamentId,
+          htPlayerId: matchBookingsTable.htPlayerId,
+          htTeamId: matchBookingsTable.htTeamId,
+          bookingType: matchBookingsTable.bookingType,
+          minute: matchBookingsTable.minute,
+          playerName: sql<string>`COALESCE(${playersTable.firstName} || ' ' || ${playersTable.lastName}, 'Desconocido')`,
+          teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchBookingsTable.htTeamId})`,
+        })
+        .from(matchBookingsTable)
+        .leftJoin(playersTable, eq(matchBookingsTable.htPlayerId, playersTable.htPlayerId))
+        .leftJoin(teamsTable, eq(matchBookingsTable.htTeamId, teamsTable.htTeamId))
+        .where(eq(matchBookingsTable.matchId, matchId))
+        .orderBy(asc(matchBookingsTable.minute))
+        .all();
+    },
+
+    async getTopCards(tournamentId, limit = 25) {
+      const rows = await db
+        .select({
+          htPlayerId: matchBookingsTable.htPlayerId,
+          playerName: sql<string>`COALESCE(${playersTable.firstName} || ' ' || ${playersTable.lastName}, 'Desconocido')`,
+          htTeamId: matchBookingsTable.htTeamId,
+          teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchBookingsTable.htTeamId})`,
+          yellowCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 1 THEN 1 ELSE 0 END)`,
+          yellowRedCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 2 THEN 1 ELSE 0 END)`,
+          redCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 3 THEN 1 ELSE 0 END)`,
+          totalCards: sql<number>`COUNT(*)`,
+        })
+        .from(matchBookingsTable)
+        .leftJoin(playersTable, eq(matchBookingsTable.htPlayerId, playersTable.htPlayerId))
+        .leftJoin(teamsTable, eq(matchBookingsTable.htTeamId, teamsTable.htTeamId))
+        .where(eq(matchBookingsTable.tournamentId, tournamentId))
+        .groupBy(
+          matchBookingsTable.htPlayerId,
+          matchBookingsTable.htTeamId,
+          playersTable.firstName,
+          playersTable.lastName,
+          teamsTable.name,
+        )
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(limit)
+        .all();
+
+      return rows.map((r) => ({
+        htPlayerId: r.htPlayerId,
+        playerName: r.playerName,
+        htTeamId: r.htTeamId,
+        teamName: r.teamName,
+        yellowCards: r.yellowCards,
+        yellowRedCards: r.yellowRedCards,
+        redCards: r.redCards,
+        totalCards: r.totalCards,
       }));
     },
   };

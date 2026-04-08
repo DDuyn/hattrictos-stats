@@ -4,6 +4,7 @@ import type {
   TournamentRepository,
   TopScorerRow,
   TopMinutesRow,
+  TopCardRow,
   StandingWithTeam,
   MatchWithTeams,
 } from '../infrastructure/tournaments.repository';
@@ -15,6 +16,7 @@ export interface TournamentDetail {
   matches: MatchWithTeams[];
   topScorers: TopScorerRow[];
   topMinutes: TopMinutesRow[];
+  topCards: TopCardRow[];
 }
 
 export type GetTournament = (id: string) => Promise<Result<TournamentDetail, AppError>>;
@@ -33,13 +35,14 @@ export function createGetTournament(
       return err(notFoundError(`Tournament ${id} not found.`));
     }
 
-    const [standings, matches, topScorers, topMinutes] = await Promise.all([
+    const [standings, matches, topScorers, topMinutes, topCards] = await Promise.all([
       tournamentRepository.getStandings(id),
       tournamentRepository.getMatches(id),
       tournamentRepository.getTopScorers(id, 10),
       tournamentRepository.getTopMinutes(id, 25),
+      tournamentRepository.getTopCards(id, 25),
     ]);
 
-    return ok({ tournament, standings, matches, topScorers, topMinutes });
+    return ok({ tournament, standings, matches, topScorers, topMinutes, topCards });
   };
 }

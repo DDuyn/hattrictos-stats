@@ -5,6 +5,7 @@ import type {
   MatchWithTeams,
   MatchEventWithPlayers,
   MatchAppearanceWithNames,
+  MatchBookingWithPlayer,
 } from '../infrastructure/tournaments.repository';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,6 +13,7 @@ import type {
 export interface MatchDetail {
   match: MatchWithTeams;
   events: MatchEventWithPlayers[];
+  bookings: MatchBookingWithPlayer[];
   /** Home team appearances, sorted by minuteIn then roleId */
   homeAppearances: MatchAppearanceWithNames[];
   /** Away team appearances, sorted by minuteIn then roleId */
@@ -26,7 +28,7 @@ export type GetMatchDetail = (
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns full match detail: result, events (goals), and both lineups.
+ * Returns full match detail: result, events (goals), bookings (cards), and both lineups.
  * Public — no auth required.
  */
 export function createGetMatchDetail(
@@ -38,14 +40,15 @@ export function createGetMatchDetail(
       return err(notFoundError(`Match ${matchId} not found in tournament ${tournamentId}.`));
     }
 
-    const [events, appearances] = await Promise.all([
+    const [events, appearances, bookings] = await Promise.all([
       tournamentRepository.getMatchEvents(matchId),
       tournamentRepository.getMatchAppearances(matchId),
+      tournamentRepository.getMatchBookings(matchId),
     ]);
 
     const homeAppearances = appearances.filter((a) => a.htTeamId === match.homeTeamId);
     const awayAppearances = appearances.filter((a) => a.htTeamId === match.awayTeamId);
 
-    return ok({ match, events, homeAppearances, awayAppearances });
+    return ok({ match, events, bookings, homeAppearances, awayAppearances });
   };
 }

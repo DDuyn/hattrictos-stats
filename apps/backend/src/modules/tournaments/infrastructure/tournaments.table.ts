@@ -162,3 +162,35 @@ export const matchAppearancesTable = sqliteTable('match_appearances', {
 
 export type MatchAppearanceRow = typeof matchAppearancesTable.$inferSelect;
 export type NewMatchAppearanceRow = typeof matchAppearancesTable.$inferInsert;
+
+// ─── match_bookings ───────────────────────────────────────────────────────────
+
+/**
+ * Bookings (cards) per match, parsed from HattrickData.Match.Bookings.Booking.
+ *
+ * BookingType values (Hattrick Arena / HTOIntegrated):
+ *   1 = yellow card
+ *   2 = yellow-red (second yellow → red)
+ *   3 = red card (straight red)
+ */
+export const matchBookingsTable = sqliteTable('match_bookings', {
+  id: text('id').primaryKey(),
+  matchId: text('match_id')
+    .notNull()
+    .references(() => tournamentMatchesTable.id, { onDelete: 'cascade' }),
+  tournamentId: text('tournament_id')
+    .notNull()
+    .references(() => tournamentsTable.id, { onDelete: 'cascade' }),
+  /** Hattrick player ID — JOIN with players.ht_player_id to resolve name */
+  htPlayerId: integer('ht_player_id').notNull(),
+  /** Hattrick team ID */
+  htTeamId: integer('ht_team_id').notNull(),
+  /**
+   * 1 = yellow, 2 = yellow-red (2nd yellow), 3 = red
+   */
+  bookingType: integer('booking_type').notNull(),
+  minute: integer('minute').notNull(),
+});
+
+export type MatchBookingRow = typeof matchBookingsTable.$inferSelect;
+export type NewMatchBookingRow = typeof matchBookingsTable.$inferInsert;

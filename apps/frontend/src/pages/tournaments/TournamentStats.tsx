@@ -2,7 +2,7 @@ import { For, Show } from 'solid-js';
 import { A, useParams } from '@solidjs/router';
 import { createStore } from 'solid-js/store';
 import { onMount } from 'solid-js';
-import { tournamentsApi, type TournamentDetail, type TopMinutes } from '../../domain/tournaments/tournaments.api';
+import { tournamentsApi, type TournamentDetail, type TopMinutes, type TopCard } from '../../domain/tournaments/tournaments.api';
 
 // ─── Ctrl ─────────────────────────────────────────────────────────────────────
 
@@ -48,6 +48,7 @@ export default function TournamentStats() {
           const t = detail.tournament;
           const scorers = detail.topScorers ?? [];
           const topMinutes = detail.topMinutes ?? [];
+          const topCards = detail.topCards ?? [];
 
           return (
             <>
@@ -146,6 +147,48 @@ export default function TournamentStats() {
                                 <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
                                 <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.appearances}</td>
                                 <td class="px-4 py-2.5 text-right font-bold text-gray-900">{row.minutes}'</td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </Show>
+                </section>
+
+                {/* Tarjetas */}
+                <section>
+                  <h2 class="text-base font-semibold text-gray-900 mb-3">Tarjetas</h2>
+                  <Show
+                    when={topCards.length > 0}
+                    fallback={
+                      <div class="bg-white border border-gray-200 rounded-lg px-4 py-10 text-center text-sm text-gray-400">
+                        No hay tarjetas registradas.
+                      </div>
+                    }
+                  >
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <table class="w-full text-sm">
+                        <thead>
+                          <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide">
+                            <th class="px-4 py-2.5 text-left w-8">#</th>
+                            <th class="px-4 py-2.5 text-left">Jugador</th>
+                            <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
+                            <th class="px-4 py-2.5 text-center" title="Amarillas">🟨</th>
+                            <th class="px-4 py-2.5 text-center hidden md:table-cell" title="Doble amarilla">🟨🟥</th>
+                            <th class="px-4 py-2.5 text-center" title="Rojas">🟥</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={topCards}>
+                            {(row: TopCard, i) => (
+                              <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
+                                <td class="px-4 py-2.5 font-medium text-gray-900">{row.playerName}</td>
+                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
+                                <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.yellowCards || '-'}</td>
+                                <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.yellowRedCards || '-'}</td>
+                                <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.redCards || '-'}</td>
                               </tr>
                             )}
                           </For>

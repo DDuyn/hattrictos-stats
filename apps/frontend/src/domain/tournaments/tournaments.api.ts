@@ -75,9 +75,23 @@ export interface MatchAppearance {
   teamName: string;
 }
 
+export interface MatchBooking {
+  id: string;
+  matchId: string;
+  tournamentId: string;
+  htPlayerId: number;
+  htTeamId: number;
+  /** 1 = yellow, 2 = yellow-red (2nd yellow), 3 = red */
+  bookingType: number;
+  minute: number;
+  playerName: string;
+  teamName: string;
+}
+
 export interface MatchDetail {
   match: TournamentMatch & { homeTeamName: string; awayTeamName: string };
   events: MatchEvent[];
+  bookings: MatchBooking[];
   homeAppearances: MatchAppearance[];
   awayAppearances: MatchAppearance[];
 }
@@ -99,12 +113,24 @@ export interface TopMinutes {
   appearances: number;
 }
 
+export interface TopCard {
+  htPlayerId: number;
+  playerName: string;
+  htTeamId: number;
+  teamName: string;
+  yellowCards: number;
+  yellowRedCards: number;
+  redCards: number;
+  totalCards: number;
+}
+
 export interface TournamentDetail {
   tournament: Tournament;
   standings: TournamentStanding[];
   matches: TournamentMatch[];
   topScorers: TopScorer[];
   topMinutes: TopMinutes[];
+  topCards: TopCard[];
 }
 
 // ─── API client ───────────────────────────────────────────────────────────────

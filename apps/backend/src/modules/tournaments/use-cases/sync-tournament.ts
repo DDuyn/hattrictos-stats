@@ -7,6 +7,7 @@ import type {
   NewTournamentMatchRow,
   NewMatchEventRow,
   NewMatchAppearanceRow,
+  NewMatchBookingRow,
 } from '../infrastructure/tournaments.table';
 import { createChppClient } from '../../../infrastructure/chpp/chpp-client';
 import type { ChppTokenRepository } from '../../admin/infrastructure/chpp-token.repository';
@@ -205,6 +206,57 @@ export function parseMatchEvents(
       subjectPlayerId: isNaN(subjectPlayerId) ? null : subjectPlayerId,
       subjectTeamId: isNaN(subjectTeamId) ? null : subjectTeamId,
       objectPlayerId: isNaN(objectPlayerId) ? null : objectPlayerId,
+    });
+  }
+
+  return rows;
+}
+
+// ─── Match bookings parser ────────────────────────────────────────────────────
+
+/**
+ * Parses bookings (cards) from matchdetails CHPP response.
+ *
+ * Shape: HattrickData.Match.Bookings.Booking (single object or array)
+ * Fields: BookingPlayerID, BookingTeamID, BookingType, BookingMinute
+ *
+ * BookingType: 1 = yellow, 2 = yellow-red (2nd yellow → red), 3 = red
+ */
+export function parseMatchBookings(
+  matchId: string,
+  tournamentId: string,
+  raw: unknown,
+): NewMatchBookingRow[] {
+  const root = raw as Record<string, unknown>;
+  const htData = (root['HattrickData'] ?? root) as Record<string, unknown>;
+  const match = (htData['Match'] ?? htData['match']) as Record<string, unknown> | undefined;
+  if (!match) return [];
+
+  const bookingsWrapper = (match['Bookings'] ?? match['bookings']) as Record<string, unknown> | undefined;
+  if (!bookingsWrapper) return [];
+
+  const rawBookings = bookingsWrapper['Booking'] ?? bookingsWrapper['booking'];
+  if (!rawBookings) return [];
+
+  const bookings = toArray<Record<string, unknown>>(rawBookings);
+  const rows: NewMatchBookingRow[] = [];
+
+  for (const b of bookings) {
+    const htPlayerId = getNum(b, 'BookingPlayerID', 'bookingPlayerId');
+    const htTeamId = getNum(b, 'BookingTeamID', 'bookingTeamId');
+    const bookingType = getNum(b, 'BookingType', 'bookingType');
+    const minute = getNum(b, 'BookingMinute', 'bookingMinute');
+
+    if (isNaN(htPlayerId) || isNaN(htTeamId) || isNaN(bookingType) || isNaN(minute)) continue;
+
+    rows.push({
+      id: randomUUID(),
+      matchId,
+      tournamentId,
+      htPlayerId,
+      htTeamId,
+      bookingType,
+      minute,
     });
   }
 
@@ -514,6 +566,11 @@ export function createSyncTournament(
         ? parseMatchEvents(match.id, tournamentId, detailsRes.value)
         : [];
 
+      // Parse bookings (cards)
+      const bookingRows: NewMatchBookingRow[] = detailsRes.ok
+        ? parseMatchBookings(match.id, tournamentId, detailsRes.value)
+        : [];
+
       // Parse lineups
       const homeLineup: ParsedLineupResult = homeLineupRes.ok
         ? parseMatchLineup(match.id, tournamentId, homeLineupRes.value)
@@ -537,10 +594,11 @@ export function createSyncTournament(
         ),
       );
 
-      // Persist events + appearances
+      // Persist events + appearances + bookings
       await Promise.all([
         tournamentRepository.replaceMatchEvents(match.id, eventRows),
         tournamentRepository.replaceMatchAppearances(match.id, allAppearances),
+        tournamentRepository.replaceMatchBookings(match.id, bookingRows),
       ]);
 
       await tournamentRepository.markMatchDetailsSynced(match.id);

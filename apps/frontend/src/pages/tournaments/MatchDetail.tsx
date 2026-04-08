@@ -7,6 +7,7 @@ import {
   type MatchDetail,
   type MatchAppearance,
   type MatchEvent,
+  type MatchBooking,
 } from '../../domain/tournaments/tournaments.api';
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -69,31 +70,82 @@ function formatMatchDate(dateStr: string): string {
 
 // ─── Events timeline ──────────────────────────────────────────────────────────
 
+type TimelineItem =
+  | { kind: 'goal'; minute: number; teamId: number; playerName: string }
+  | { kind: 'booking'; minute: number; teamId: number; playerName: string; bookingType: number };
+
+function bookingLabel(bookingType: number): string {
+  if (bookingType === 1) return 'Amarilla';
+  if (bookingType === 2) return '2ª amarilla';
+  if (bookingType === 3) return 'Roja';
+  return 'Tarjeta';
+}
+
 /**
  * Three-column layout: [home side] [minute] [away side]
- * Each goal appears in the correct column with no overlap.
+ * Goals and bookings merged and sorted by minute.
  */
-function EventTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
+function EventTimeline(props: {
+  events: MatchEvent[];
+  bookings: MatchBooking[];
+  homeTeamId: number;
+}) {
+  const items = (): TimelineItem[] => {
+    const goals: TimelineItem[] = props.events.map((ev) => ({
+      kind: 'goal',
+      minute: ev.minute,
+      teamId: ev.subjectTeamId ?? 0,
+      playerName: ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`,
+    }));
+    const cards: TimelineItem[] = props.bookings.map((b) => ({
+      kind: 'booking',
+      minute: b.minute,
+      teamId: b.htTeamId,
+      playerName: b.playerName,
+      bookingType: b.bookingType,
+    }));
+    return [...goals, ...cards].sort((a, b) => a.minute - b.minute);
+  };
+
   return (
     <div class="flex flex-col divide-y divide-gray-50">
-      <For each={props.events}>
-        {(ev) => {
-          const isHome = ev.subjectTeamId === props.homeTeamId;
-          const name = ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`;
+      <For each={items()}>
+        {(item) => {
+          const isHome = item.teamId === props.homeTeamId;
           return (
             <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-4 py-2.5">
               {/* Home column */}
               <div class="flex items-center gap-2 justify-end min-w-0">
                 <Show when={isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate text-right">{name}</span>
+                  <span class="text-sm font-medium text-gray-900 truncate text-right">
+                    {item.kind === 'goal' ? '⚽ ' : ''}{item.playerName}
+                    {item.kind === 'booking' && (
+                      <span
+                        class="ml-1.5 text-xs font-normal"
+                        style={{ color: item.bookingType === 1 ? '#ca8a04' : '#dc2626' }}
+                      >
+                        {bookingLabel(item.bookingType)}
+                      </span>
+                    )}
+                  </span>
                 </Show>
               </div>
               {/* Minute — always centered */}
-              <span class="text-xs font-mono text-gray-400 w-8 text-center shrink-0">{ev.minute}'</span>
+              <span class="text-xs font-mono text-gray-400 w-8 text-center shrink-0">{item.minute}'</span>
               {/* Away column */}
               <div class="flex items-center gap-2 justify-start min-w-0">
                 <Show when={!isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate">{name}</span>
+                  <span class="text-sm font-medium text-gray-900 truncate">
+                    {item.kind === 'goal' ? '⚽ ' : ''}{item.playerName}
+                    {item.kind === 'booking' && (
+                      <span
+                        class="ml-1.5 text-xs font-normal"
+                        style={{ color: item.bookingType === 1 ? '#ca8a04' : '#dc2626' }}
+                      >
+                        {bookingLabel(item.bookingType)}
+                      </span>
+                    )}
+                  </span>
                 </Show>
               </div>
             </div>
@@ -251,16 +303,16 @@ export default function MatchDetailPage() {
               {/* Events + Lineups */}
               <div class="flex flex-col lg:flex-row gap-8">
 
-                {/* Events (goals) */}
+                {/* Events (goals + tarjetas) */}
                 <section class="lg:flex-[1] min-w-0">
-                  <h2 class="text-base font-semibold text-gray-900 mb-3">Goles</h2>
+                  <h2 class="text-base font-semibold text-gray-900 mb-3">Eventos</h2>
                   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <Show
-                      when={d.events.length > 0}
+                      when={d.events.length > 0 || d.bookings.length > 0}
                       fallback={
                         <div class="px-4 py-8 text-center text-sm text-gray-400">
                           <Show when={finished} fallback="Partido no disputado aún">
-                            Sin goles registrados
+                            Sin eventos registrados
                           </Show>
                         </div>
                       }
@@ -271,7 +323,7 @@ export default function MatchDetailPage() {
                         <div class="w-8" />
                         <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide pl-2">{m.awayTeamName}</div>
                       </div>
-                      <EventTimeline events={d.events} homeTeamId={m.homeTeamId} />
+                      <EventTimeline events={d.events} bookings={d.bookings ?? []} homeTeamId={m.homeTeamId} />
                     </Show>
                   </div>
                 </section>
