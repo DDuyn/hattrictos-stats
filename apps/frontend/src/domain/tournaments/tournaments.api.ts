@@ -81,11 +81,13 @@ export interface MatchBooking {
   tournamentId: string;
   htPlayerId: number;
   htTeamId: number;
-  /** 1 = yellow, 2 = yellow-red (2nd yellow), 3 = red */
+  /** 1 = yellow, 2 = red (direct or 2nd yellow — see isYellowRed) */
   bookingType: number;
   minute: number;
   playerName: string;
   teamName: string;
+  /** true when bookingType=2 AND the player had a yellow in the same match */
+  isYellowRed: boolean;
 }
 
 export interface MatchDetail {

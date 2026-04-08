@@ -109,12 +109,12 @@ function GoalTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
 
 /**
  * Inline card indicator shown next to a player's name in the lineup.
- * BookingType (Hattrick Arena): 1 = yellow, 2 = red (direct)
- * BookingType 3 = yellow-red (2nd yellow) — not yet observed in Arena data
+ * bookingType: 1 = yellow, 2 = red (direct or 2nd yellow)
+ * isYellowRed: true when the type-2 was triggered by a prior yellow in the same match
  */
-function CardBadge(props: { bookingType: number; minute: number }) {
+function CardBadge(props: { bookingType: number; minute: number; isYellowRed: boolean }) {
   const isRed = props.bookingType >= 2;
-  const label = props.bookingType === 3 ? '2A' : isRed ? 'R' : 'A';
+  const label = (props.bookingType === 2 && props.isYellowRed) ? '2A' : isRed ? 'R' : 'A';
   return (
     <span
       class="inline-block ml-1.5 text-xs font-mono rounded px-1 py-0.5 leading-none"
@@ -166,7 +166,7 @@ function LineupTable(props: {
                       <span class="text-xs text-gray-400 ml-1.5">↓{p.minuteOut}'</span>
                     </Show>
                     <For each={bookingsFor(p.htPlayerId)}>
-                      {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} />}
+                      {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} isYellowRed={b.isYellowRed} />}
                     </For>
                   </td>
                   <td class="px-3 py-2.5 text-right whitespace-nowrap">
@@ -194,7 +194,7 @@ function LineupTable(props: {
                     <td class="px-3 py-2.5 font-medium text-gray-900">
                       {p.playerName}
                       <For each={bookingsFor(p.htPlayerId)}>
-                        {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} />}
+                        {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} isYellowRed={b.isYellowRed} />}
                       </For>
                     </td>
                     <td class="px-3 py-2.5 text-right whitespace-nowrap">

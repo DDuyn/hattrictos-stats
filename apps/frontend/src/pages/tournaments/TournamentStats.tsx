@@ -175,7 +175,8 @@ export default function TournamentStats() {
                             <th class="px-4 py-2.5 text-left">Jugador</th>
                             <th class="px-4 py-2.5 text-left hidden sm:table-cell">Equipo</th>
                             <th class="px-4 py-2.5 text-center" title="Amarillas">Amar.</th>
-                            <th class="px-4 py-2.5 text-center" title="Rojas">Rojas</th>
+                            <th class="px-4 py-2.5 text-center hidden md:table-cell" title="Doble amarilla">2ª Amar.</th>
+                            <th class="px-4 py-2.5 text-center" title="Rojas directas">Rojas</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -186,7 +187,8 @@ export default function TournamentStats() {
                                 <td class="px-4 py-2.5 font-medium text-gray-900">{row.playerName}</td>
                                 <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
                                 <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.yellowCards || '-'}</td>
-                                <td class="px-4 py-2.5 text-center font-bold text-gray-900">{(row.redCards + row.yellowRedCards) || '-'}</td>
+                                <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.yellowRedCards || '-'}</td>
+                                <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.redCards || '-'}</td>
                               </tr>
                             )}
                           </For>

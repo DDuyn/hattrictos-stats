@@ -52,6 +52,12 @@ export interface MatchAppearanceWithNames extends Omit<MatchAppearanceRow, never
 export interface MatchBookingWithPlayer extends Omit<MatchBookingRow, never> {
   playerName: string;
   teamName: string;
+  /**
+   * true when bookingType=2 AND the same player already has a bookingType=1
+   * in the same match — i.e. this red was a second yellow, not a direct red.
+   * Inferred client-side from the full booking list for the match.
+   */
+  isYellowRed: boolean;
 }
 
 export interface TopCardRow {
@@ -60,7 +66,9 @@ export interface TopCardRow {
   htTeamId: number;
   teamName: string;
   yellowCards: number;
+  /** BookingType=2 where the player also had a BookingType=1 in the same match */
   yellowRedCards: number;
+  /** BookingType=2 where the player had NO BookingType=1 in the same match */
   redCards: number;
   totalCards: number;
 }
@@ -556,7 +564,7 @@ export function createTournamentRepository(db: DB): TournamentRepository {
     },
 
     async getMatchBookings(matchId) {
-      return db
+      const rows = await db
         .select({
           id: matchBookingsTable.id,
           matchId: matchBookingsTable.matchId,
@@ -574,10 +582,23 @@ export function createTournamentRepository(db: DB): TournamentRepository {
         .where(eq(matchBookingsTable.matchId, matchId))
         .orderBy(asc(matchBookingsTable.minute))
         .all();
+
+      // Players who received a yellow (type 1) in this match
+      const hadYellow = new Set(
+        rows.filter((r) => r.bookingType === 1).map((r) => r.htPlayerId),
+      );
+
+      return rows.map((r) => ({
+        ...r,
+        // A type-2 booking is yellow-red if the player also got a type-1 in the same match
+        isYellowRed: r.bookingType === 2 && hadYellow.has(r.htPlayerId),
+      }));
     },
 
     async getTopCards(tournamentId, limit = 25) {
-      // BookingType (Hattrick Arena): 1 = yellow, 2 = red (direct), 3 = yellow-red (2nd yellow, not yet observed)
+      // BookingType (Hattrick Arena): 1 = yellow, 2 = red (direct OR 2nd yellow)
+      // A type-2 is a yellow-red if the same player also received a type-1 in the same match.
+      // We detect this with a correlated EXISTS subquery.
       const rows = await db
         .select({
           htPlayerId: matchBookingsTable.htPlayerId,
@@ -585,8 +606,26 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           htTeamId: matchBookingsTable.htTeamId,
           teamName: sql<string>`COALESCE(${teamsTable.name}, 'Team ' || ${matchBookingsTable.htTeamId})`,
           yellowCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 1 THEN 1 ELSE 0 END)`,
-          yellowRedCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 3 THEN 1 ELSE 0 END)`,
-          redCards: sql<number>`SUM(CASE WHEN ${matchBookingsTable.bookingType} = 2 THEN 1 ELSE 0 END)`,
+          yellowRedCards: sql<number>`SUM(
+            CASE WHEN ${matchBookingsTable.bookingType} = 2
+              AND EXISTS (
+                SELECT 1 FROM match_bookings b2
+                WHERE b2.match_id = ${matchBookingsTable.matchId}
+                  AND b2.ht_player_id = ${matchBookingsTable.htPlayerId}
+                  AND b2.booking_type = 1
+              )
+            THEN 1 ELSE 0 END
+          )`,
+          redCards: sql<number>`SUM(
+            CASE WHEN ${matchBookingsTable.bookingType} = 2
+              AND NOT EXISTS (
+                SELECT 1 FROM match_bookings b2
+                WHERE b2.match_id = ${matchBookingsTable.matchId}
+                  AND b2.ht_player_id = ${matchBookingsTable.htPlayerId}
+                  AND b2.booking_type = 1
+              )
+            THEN 1 ELSE 0 END
+          )`,
           totalCards: sql<number>`COUNT(*)`,
         })
         .from(matchBookingsTable)
