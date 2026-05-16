@@ -36,6 +36,55 @@
       "when": 1775505023845,
       "tag": "0004_milky_hobgoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778200000000,
+      "tag": "0005_teams_players_match_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778200001000,
+      "tag": "0006_normalize_name_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778200002000,
+      "tag": "0007_teams_enriched_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778200003000,
+      "tag": "0008_countries_and_players_enriched",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778200004000,
+      "tag": "0009_teams_logo_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778200005000,
+      "tag": "0010_players_avatar_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778200006000,
+      "tag": "0011_announcements_press_notes_team_editor",
+      "breakpoints": true
     }
   ]
 }

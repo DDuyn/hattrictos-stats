@@ -1,6 +1,7 @@
 import { sign } from 'hono/jwt';
-import { migrate } from 'drizzle-orm/libsql/migrator';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { sql } from 'drizzle-orm';
 import { createApp } from '../app';
 import { db } from '../infrastructure/db/client';
 import type { UserRole } from '@hattrictos-stats/shared';
@@ -9,13 +10,44 @@ const MIGRATIONS_FOLDER = resolve(import.meta.dir, '../infrastructure/db/migrati
 
 let migrated = false;
 
+function splitSqlStatements(content: string): string[] {
+  return content
+    .split('--> statement-breakpoint')
+    .flatMap((chunk) =>
+      chunk
+        .split(';')
+        .map((statement) => statement.trim())
+        .filter(Boolean)
+        .map((statement) => `${statement};`),
+    );
+}
+
+async function applySqlMigrations() {
+  const files = readdirSync(MIGRATIONS_FOLDER)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
+
+  for (const file of files) {
+    const content = readFileSync(resolve(MIGRATIONS_FOLDER, file), 'utf8');
+    const statements = splitSqlStatements(content);
+
+    for (const statement of statements) {
+      try {
+        await db.run(sql.raw(statement));
+      } catch (error) {
+        throw new Error(`Failed migration ${file}: ${statement}`, { cause: error });
+      }
+    }
+  }
+}
+
 /**
  * Returns the Hono app with migrations applied on the in-memory SQLite DB.
  * Migrations only run once per test process.
  */
 export async function createTestApp() {
   if (!migrated) {
-    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    await applySqlMigrations();
     migrated = true;
   }
   return createApp();

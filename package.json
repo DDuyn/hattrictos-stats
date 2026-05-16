@@ -8,7 +8,7 @@
     "dev:web": "bun run --filter hattrictos-stats-web dev",
     "test": "bun run --filter '*' test",
     "test:api": "bun run --filter hattrictos-stats-api test",
-    "typecheck": "tsc --noEmit -p apps/backend/tsconfig.json && tsc --noEmit -p apps/frontend/tsconfig.json",
+    "typecheck": "./node_modules/.bin/tsc --noEmit -p apps/backend/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/frontend/tsconfig.json",
     "lint": "bunx biome check .",
     "lint:fix": "bunx biome check --write .",
     "build": "bun run --filter '*' build",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "hattrictos-stats-api": "workspace:*",
-    "lefthook": "^2.1.1"
+    "lefthook": "^2.1.1",
+    "typescript": "^5.8.3"
   }
 }
