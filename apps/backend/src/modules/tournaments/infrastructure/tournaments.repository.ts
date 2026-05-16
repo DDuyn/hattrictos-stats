@@ -34,6 +34,12 @@ export interface StandingWithTeam extends Omit<TournamentStandingRow, never> {
 export interface MatchWithTeams extends Omit<TournamentMatchRow, never> {
   homeTeamName: string;
   awayTeamName: string;
+  /** Only populated when fetching a single match (getMatchById) */
+  tournamentName?: string;
+  /** Only populated when fetching a single match (getMatchById) */
+  homeTeamLogo?: string | null;
+  /** Only populated when fetching a single match (getMatchById) */
+  awayTeamLogo?: string | null;
 }
 
 /** Match event row augmented with player names resolved via JOIN */
@@ -185,6 +191,12 @@ export interface TournamentRepository {
 
   /** Return players ranked by total cards in the tournament */
   getTopCards(tournamentId: string, limit?: number): Promise<TopCardRow[]>;
+
+  /**
+   * Return the most recent matches for a team (by htTeamId) across all tournaments,
+   * with team names and tournament name resolved via JOIN.
+   */
+  getRecentMatchesByTeam(htTeamId: number, limit?: number): Promise<MatchWithTeams[]>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -355,12 +367,15 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           matchDate: tournamentMatchesTable.matchDate,
           homeTeamId: tournamentMatchesTable.homeTeamId,
           homeTeamName: sql<string>`COALESCE(home_team.name, 'Team ' || ${tournamentMatchesTable.homeTeamId})`,
+          homeTeamLogo: sql<string | null>`home_team.logo_url`,
           awayTeamId: tournamentMatchesTable.awayTeamId,
           awayTeamName: sql<string>`COALESCE(away_team.name, 'Team ' || ${tournamentMatchesTable.awayTeamId})`,
+          awayTeamLogo: sql<string | null>`away_team.logo_url`,
           homeGoals: tournamentMatchesTable.homeGoals,
           awayGoals: tournamentMatchesTable.awayGoals,
           status: tournamentMatchesTable.status,
           detailsSynced: tournamentMatchesTable.detailsSynced,
+          tournamentName: sql<string>`COALESCE(${tournamentsTable.name}, '')`,
         })
         .from(tournamentMatchesTable)
         .leftJoin(
@@ -371,6 +386,7 @@ export function createTournamentRepository(db: DB): TournamentRepository {
           sql`${teamsTable} AS away_team`,
           sql`${tournamentMatchesTable.awayTeamId} = away_team.ht_team_id`,
         )
+        .leftJoin(tournamentsTable, eq(tournamentMatchesTable.tournamentId, tournamentsTable.id))
         .where(eq(tournamentMatchesTable.id, matchId))
         .get();
 
@@ -653,6 +669,49 @@ export function createTournamentRepository(db: DB): TournamentRepository {
         redCards: r.redCards,
         totalCards: r.totalCards,
       }));
+    },
+
+    async getRecentMatchesByTeam(htTeamId, limit = 10) {
+      const rows = await db
+        .select({
+          id: tournamentMatchesTable.id,
+          tournamentId: tournamentMatchesTable.tournamentId,
+          htMatchId: tournamentMatchesTable.htMatchId,
+          round: tournamentMatchesTable.round,
+          matchDate: tournamentMatchesTable.matchDate,
+          homeTeamId: tournamentMatchesTable.homeTeamId,
+          homeTeamName: sql<string>`COALESCE(home_team.name, 'Team ' || ${tournamentMatchesTable.homeTeamId})`,
+          awayTeamId: tournamentMatchesTable.awayTeamId,
+          awayTeamName: sql<string>`COALESCE(away_team.name, 'Team ' || ${tournamentMatchesTable.awayTeamId})`,
+          homeGoals: tournamentMatchesTable.homeGoals,
+          awayGoals: tournamentMatchesTable.awayGoals,
+          status: tournamentMatchesTable.status,
+          detailsSynced: tournamentMatchesTable.detailsSynced,
+          tournamentName: sql<string>`COALESCE(${tournamentsTable.name}, '')`,
+        })
+        .from(tournamentMatchesTable)
+        .leftJoin(
+          sql`${teamsTable} AS home_team`,
+          sql`${tournamentMatchesTable.homeTeamId} = home_team.ht_team_id`,
+        )
+        .leftJoin(
+          sql`${teamsTable} AS away_team`,
+          sql`${tournamentMatchesTable.awayTeamId} = away_team.ht_team_id`,
+        )
+        .leftJoin(tournamentsTable, eq(tournamentMatchesTable.tournamentId, tournamentsTable.id))
+        .where(
+          sql`${tournamentMatchesTable.homeTeamId} = ${htTeamId} OR ${tournamentMatchesTable.awayTeamId} = ${htTeamId}`,
+        )
+        .orderBy(
+          // Finished matches first (most recent on top), Upcoming matches last (soonest first)
+          sql`CASE WHEN ${tournamentMatchesTable.status} = 'Finished' THEN 0 ELSE 1 END ASC`,
+          sql`CASE WHEN ${tournamentMatchesTable.status} = 'Finished' THEN ${tournamentMatchesTable.matchDate} END DESC`,
+          sql`CASE WHEN ${tournamentMatchesTable.status} != 'Finished' THEN ${tournamentMatchesTable.matchDate} END ASC`,
+        )
+        .limit(limit)
+        .all();
+
+      return rows as MatchWithTeams[];
     },
   };
 }

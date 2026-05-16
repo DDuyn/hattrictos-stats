@@ -9,6 +9,14 @@ export const playersTable = sqliteTable('players', {
   lastName: text('last_name').notNull(),
   /** ID del equipo en el que fue visto por última vez */
   currentHtTeamId: integer('current_ht_team_id'),
+  /** Edad en años (del último sync de file=players) */
+  age: integer('age'),
+  /** Días adicionales sobre la edad en años */
+  ageDays: integer('age_days'),
+  /** Hattrick CountryID (referencia a countries.country_id) */
+  countryId: integer('country_id'),
+  /** URL relativa del avatar subido manualmente (ej. /avatars/1234567.png) */
+  avatarUrl: text('avatar_url'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),

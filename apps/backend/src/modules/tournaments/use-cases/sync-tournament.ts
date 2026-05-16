@@ -13,6 +13,7 @@ import { createChppClient } from '../../../infrastructure/chpp/chpp-client';
 import type { ChppTokenRepository } from '../../admin/infrastructure/chpp-token.repository';
 import type { TeamsRepository } from '../../teams/infrastructure/teams.repository';
 import type { PlayersRepository } from '../../players/infrastructure/players.repository';
+import type { CountriesRepository } from '../../players/infrastructure/countries.repository';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,10 @@ function getNum(obj: Record<string, unknown>, ...keys: string[]): number {
     if (v !== undefined && v !== null && v !== '') return Number(v);
   }
   return NaN;
+}
+
+function withFallback(value: number, fallback: number): number {
+  return Number.isNaN(value) ? fallback : value;
 }
 
 function getStr(obj: Record<string, unknown>, ...keys: string[]): string {
@@ -85,16 +90,24 @@ export function parseStandings(
       const name = getStr(team, 'TeamName', 'teamName') || `Team ${htTeamId}`;
       teamNames.set(htTeamId, name);
 
+      const played = getNum(team, 'GamesPlayed', 'gamesPlayed', 'Matches', 'matches');
+      const won = getNum(team, 'Won', 'won');
+      const lost = getNum(team, 'Lost', 'lost');
+      const rawDrawn = getNum(team, 'Drawn', 'drawn', 'Draws', 'draws');
+      const derivedDrawn = !isNaN(played) && !isNaN(won) && !isNaN(lost)
+        ? Math.max(0, played - won - lost)
+        : 0;
+
       rows.push({
         id: randomUUID(),
         tournamentId,
         groupId,
         htTeamId,
         position: getNum(team, 'Position', 'position') || rows.length + 1,
-        played: getNum(team, 'GamesPlayed', 'gamesPlayed', 'Matches', 'matches') || 0,
-        won: getNum(team, 'Won', 'won') || 0,
-        drawn: getNum(team, 'Drawn', 'drawn') || 0,
-        lost: getNum(team, 'Lost', 'lost') || 0,
+        played: withFallback(played, 0),
+        won: withFallback(won, 0),
+        drawn: withFallback(rawDrawn, derivedDrawn),
+        lost: withFallback(lost, 0),
         goalsFor: getNum(team, 'GoalsFor', 'goalsFor') || 0,
         goalsAgainst: getNum(team, 'GoalsAgainst', 'goalsAgainst') || 0,
         points: getNum(team, 'Points', 'points') || 0,
@@ -449,8 +462,11 @@ export function parseMatchLineup(
 /**
  * Syncs a registered tournament's data from CHPP:
  *
+ *  Phase 0 — worlddetails → upsert countries table (ISO codes for flags)
  *  Phase 1 — Base sync (standings + fixtures + metadata refresh)
  *  Phase 2 — Upsert teams from standings into teams + tournament_team_seasons
+ *  Phase 2b — Enrich teams with teamdetails (skip if already done)
+ *  Phase 2c — Enrich player roster via file=players per team (skip if < 7 days since last sync)
  *  Phase 3 — For each finished match without details:
  *              · matchdetails v3.1 → parse goals → insert match_events
  *              · matchlineup v2.1 (home) → parse lineup → insert match_appearances
@@ -465,6 +481,7 @@ export function createSyncTournament(
   tournamentRepository: TournamentRepository,
   teamsRepository: TeamsRepository,
   playersRepository: PlayersRepository,
+  countriesRepository: CountriesRepository,
 ): SyncTournament {
   return async (tournamentId: string) => {
     const tournament = await tournamentRepository.findById(tournamentId);
@@ -482,6 +499,35 @@ export function createSyncTournament(
       accessToken: activeToken.accessToken,
       accessTokenSecret: activeToken.accessTokenSecret,
     });
+
+    // ── Phase 0: Sync countries from worlddetails ────────────────────────────
+    // One call, always — data is idempotent and rarely changes.
+
+    const worldDetailsRes = await chpp.fetch({ file: 'worlddetails', version: '1.9' });
+    if (worldDetailsRes.ok) {
+      const wd = worldDetailsRes.value as Record<string, unknown>;
+      const htData = (wd['HattrickData'] ?? wd) as Record<string, unknown>;
+      const leagueListWrapper = (htData['LeagueList'] ?? htData['leagueList'] ?? {}) as Record<string, unknown>;
+      const rawLeagues = leagueListWrapper['League'] ?? leagueListWrapper['league'];
+      const leagues = toArray<Record<string, unknown>>(rawLeagues);
+
+      for (const league of leagues) {
+        const leagueId = getNum(league, 'LeagueID', 'leagueID', 'leagueId');
+        const countryWrapper = (league['Country'] ?? league['country'] ?? {}) as Record<string, unknown>;
+        const countryId = getNum(countryWrapper, 'CountryID', 'countryID', 'countryId');
+        const countryCode = getStr(countryWrapper, 'CountryCode', 'countryCode');
+
+        if (isNaN(countryId) || countryId <= 0 || !countryCode) continue;
+
+        const name = getStr(league, 'EnglishName', 'englishName', 'Name', 'name') || `Country ${countryId}`;
+        await countriesRepository.upsertCountry({
+          countryId,
+          leagueId: isNaN(leagueId) ? null : leagueId,
+          countryCode: countryCode.toLowerCase(),
+          name,
+        });
+      }
+    }
 
     // ── Phase 1: Base sync ───────────────────────────────────────────────────
 
@@ -526,6 +572,38 @@ export function createSyncTournament(
       tournamentId,
       standingRows.map((r) => r.htTeamId),
     );
+
+    // ── Phase 2b: Enrich teams with teamdetails from CHPP (skip if already done) ──
+
+    const upsertedTeams = await Promise.all(
+      standingRows.map((r) => teamsRepository.findByHtId(r.htTeamId)),
+    );
+
+    for (const team of upsertedTeams) {
+      if (!team) continue;
+      // Skip if already enriched (manager_login_name populated)
+      if (team.managerLoginName && team.managerLoginName !== '') continue;
+
+      await delay(500);
+      const teamDetailsRes = await chpp.fetch({ file: 'teamdetails', teamID: team.htTeamId });
+      if (!teamDetailsRes.ok) continue;
+
+      const raw = teamDetailsRes.value as Record<string, unknown>;
+      const htData = (raw['HattrickData'] ?? raw) as Record<string, unknown>;
+      const td = (htData['Team'] ?? htData['team'] ?? htData) as Record<string, unknown>;
+
+      const manager = (td['Manager'] ?? td['manager'] ?? {}) as Record<string, unknown>;
+      const league = (td['League'] ?? td['league'] ?? {}) as Record<string, unknown>;
+      const arena = (td['Arena'] ?? td['arena'] ?? {}) as Record<string, unknown>;
+
+      await teamsRepository.updateTeamDetails(team.htTeamId, {
+        shortName: String(td['ShortTeamName'] ?? td['shortTeamName'] ?? '') || undefined,
+        managerLoginName: String(manager['Loginname'] ?? manager['loginname'] ?? '') || undefined,
+        leagueName: String(league['LeagueName'] ?? league['leagueName'] ?? '') || undefined,
+        arenaName: String(arena['ArenaName'] ?? arena['arenaName'] ?? '') || undefined,
+        foundedDate: String(td['FoundedDate'] ?? td['foundedDate'] ?? '') || undefined,
+      });
+    }
 
     // ── Phase 3: Sync match details (incremental) ────────────────────────────
 
@@ -582,14 +660,15 @@ export function createSyncTournament(
       const allAppearances = [...homeLineup.appearances, ...awayLineup.appearances];
       const allPlayers = [...homeLineup.players, ...awayLineup.players];
 
-      // Upsert players encountered in this match
+      // Upsert players encountered in this match — WITHOUT htTeamId so we
+      // don't set currentHtTeamId from lineup data. Only Phase 4 (file=players)
+      // is authoritative for the current roster.
       await Promise.all(
         allPlayers.map((p) =>
           playersRepository.upsertPlayer({
             htPlayerId: p.htPlayerId,
             firstName: p.firstName,
             lastName: p.lastName,
-            htTeamId: p.htTeamId,
           }),
         ),
       );
@@ -608,6 +687,83 @@ export function createSyncTournament(
       if (matchesSynced < unsyncedMatches.length) {
         await delay(500);
       }
+    }
+
+    // ── Phase 4: Enrich player roster via file=players (once per week per team) ──
+    // Runs AFTER Phase 3 so that clearCurrentTeam is never overwritten by upsertPlayer
+    // calls from match lineups processed in the same sync run.
+
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    for (const team of upsertedTeams) {
+      if (!team) continue;
+
+      // Re-fetch from DB to get the current playersSyncedAt (may have been reset externally)
+      const freshTeam = await teamsRepository.findByHtId(team.htTeamId);
+      if (!freshTeam) continue;
+
+      // Skip if synced within the last 7 days
+      if (freshTeam.playersSyncedAt && now - freshTeam.playersSyncedAt.getTime() < SEVEN_DAYS_MS) continue;
+
+      await delay(500);
+      const playersRes = await chpp.fetch({ file: 'players', teamID: team.htTeamId, version: '2.0' });
+      if (!playersRes.ok) continue;
+
+      const raw = playersRes.value as Record<string, unknown>;
+
+      const htData = (raw['HattrickData'] ?? raw) as Record<string, unknown>;
+      const teamWrapper = (htData['Team'] ?? htData['team'] ?? htData) as Record<string, unknown>;
+      const playerListWrapper = (teamWrapper['PlayerList'] ?? teamWrapper['playerList'] ?? teamWrapper) as Record<string, unknown>;
+      const rawPlayers = playerListWrapper['Player'] ?? playerListWrapper['player'];
+      const chppPlayers = toArray<Record<string, unknown>>(rawPlayers);
+
+      // Recopilar los IDs de jugadores en la respuesta CHPP
+      const chppPlayerIds = new Set<number>();
+
+      for (const p of chppPlayers) {
+        // Skip trainers — CHPP includes them in PlayerList but they are not
+        // squad players. Trainers have a TrainerData sub-object.
+        if (p['TrainerData'] || p['trainerData']) continue;
+
+        const htPlayerId = getNum(p, 'PlayerID', 'playerID', 'playerId');
+        if (isNaN(htPlayerId)) continue;
+
+        chppPlayerIds.add(htPlayerId);
+
+        const firstName = String(p['FirstName'] ?? p['firstName'] ?? '');
+        const lastName = String(p['LastName'] ?? p['lastName'] ?? '');
+
+        // Upsert para garantizar que el jugador existe en la BD aunque nunca haya jugado
+        await playersRepository.upsertPlayer({
+          htPlayerId,
+          firstName: firstName || 'Player',
+          lastName: lastName || String(htPlayerId),
+          htTeamId: team.htTeamId,
+        });
+
+        const age = getNum(p, 'Age', 'age');
+        const ageDays = getNum(p, 'AgeDays', 'ageDays');
+        const countryId = getNum(p, 'CountryID', 'countryID', 'Nationality', 'nationality');
+
+        await playersRepository.updatePlayerDetails(htPlayerId, {
+          age: isNaN(age) ? null : age,
+          ageDays: isNaN(ageDays) ? null : ageDays,
+          countryId: isNaN(countryId) || countryId <= 0 ? null : countryId,
+        });
+      }
+
+      // Detectar jugadores que ya no están en el equipo según CHPP
+      // y limpiar su current_ht_team_id para que no aparezcan en la plantilla
+      const dbPlayers = await playersRepository.listByCurrentTeam(team.htTeamId);
+      for (const dbPlayer of dbPlayers) {
+        if (!chppPlayerIds.has(dbPlayer.htPlayerId)) {
+          await playersRepository.clearCurrentTeam(dbPlayer.htPlayerId);
+        }
+      }
+
+      // Registrar timestamp de sync
+      await teamsRepository.updatePlayersSyncedAt(team.htTeamId, new Date());
     }
 
     await tournamentRepository.markSynced(tournamentId);

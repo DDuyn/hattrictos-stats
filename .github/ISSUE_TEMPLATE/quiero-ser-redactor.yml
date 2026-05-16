@@ -1,0 +1,46 @@
+name: Quiero ser redactor
+description: Solicita acceso como redactor para cubrir a tu equipo en HattrickOS Stats.
+title: "[Redactor] "
+labels: ["redactor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tu interés en formar parte del equipo de redactores de HattrickOS Stats.
+        Rellena el formulario y nos pondremos en contacto contigo lo antes posible.
+
+  - type: input
+    id: email
+    attributes:
+      label: Correo electrónico de contacto
+      description: Te escribiremos aquí para confirmar el acceso.
+      placeholder: tu@email.com
+    validations:
+      required: true
+
+  - type: input
+    id: team
+    attributes:
+      label: Equipo que quieres cubrir
+      description: Nombre del equipo y/o ID de Hattrick.
+      placeholder: "Ej: FC Ejemplo (ID: 123456)"
+    validations:
+      required: true
+
+  - type: input
+    id: ht_user
+    attributes:
+      label: Usuario de Hattrick
+      description: Tu nombre de usuario en Hattrick (para verificar que eres el manager del equipo).
+      placeholder: MiUsuarioHT
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Cuéntanos algo sobre ti (opcional)
+      description: ¿Qué tipo de contenido planeas publicar? ¿Con qué frecuencia?
+      placeholder: Llevo X temporadas en Hattrick y me gustaría...
+    validations:
+      required: false

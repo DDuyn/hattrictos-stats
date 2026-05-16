@@ -16,6 +16,7 @@ import { createGetTournament } from './use-cases/get-tournament';
 import { createGetMatchDetail } from './use-cases/get-match-detail';
 import { createTeamsRepository } from '../teams/infrastructure/teams.repository';
 import { createPlayersRepository } from '../players/infrastructure/players.repository';
+import { createCountriesRepository } from '../players/infrastructure/countries.repository';
 
 type Env = { Variables: { jwtPayload: JwtPayload } } & LoggerEnv;
 
@@ -77,7 +78,7 @@ tournamentsApi.post('/', staffGuard, async (c) => {
   const tournamentRepository = createTournamentRepository(db);
   const teamsRepository = createTeamsRepository(db);
   const playersRepository = createPlayersRepository(db);
-  const registerTournament = createRegisterTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository);
+  const registerTournament = createRegisterTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository, createCountriesRepository(db));
 
   const result = await registerTournament({ htTournamentId: parsed.data.htTournamentId });
   if (!result.ok) {
@@ -120,7 +121,8 @@ tournamentsApi.post('/:id/sync', staffGuard, async (c) => {
 
   const teamsRepository = createTeamsRepository(db);
   const playersRepository = createPlayersRepository(db);
-  const syncTournament = createSyncTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository);
+  const countriesRepository = createCountriesRepository(db);
+  const syncTournament = createSyncTournament(chppConfig, tokenRepository, tournamentRepository, teamsRepository, playersRepository, countriesRepository);
 
   // Fire-and-forget: respond immediately, sync runs in background
   syncTournament(id).then((result) => {

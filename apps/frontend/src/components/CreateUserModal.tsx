@@ -1,15 +1,38 @@
-import { Show, createSignal } from 'solid-js';
+import { Show, For, createSignal, createMemo } from 'solid-js';
 import { createCreateUserModalCtrl } from './CreateUserModal.ctrl';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 
 interface CreateUserModalProps {
   onClose: () => void;
+  onCreated?: () => void;
 }
 
 export function CreateUserModal(props: CreateUserModalProps) {
-  const ctrl = createCreateUserModalCtrl();
+  const ctrl = createCreateUserModalCtrl(props.onCreated);
   const [copied, setCopied] = createSignal(false);
+
+  // ── Team combobox state ────────────────────────────────────────────────────
+  const [teamQuery, setTeamQuery] = createSignal('');
+  const [comboOpen, setComboOpen] = createSignal(false);
+
+  const filteredTeams = createMemo(() => {
+    const q = teamQuery().toLowerCase().trim();
+    if (!q) return ctrl.teams();
+    return ctrl.teams().filter((t) => t.name.toLowerCase().includes(q));
+  });
+
+  function selectTeam(htTeamId: number, name: string) {
+    ctrl.setForm('htTeamId', htTeamId);
+    setTeamQuery(name);
+    setComboOpen(false);
+  }
+
+  function clearTeam() {
+    ctrl.setForm('htTeamId', null);
+    setTeamQuery('');
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   function handleCopy() {
     const pwd = ctrl.created()?.generatedPassword;
@@ -67,6 +90,81 @@ export function CreateUserModal(props: CreateUserModalProps) {
                 <option value="co_owner">co_owner</option>
                 <option value="owner">owner</option>
               </select>
+            </div>
+
+            {/* Team combobox */}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Equipo redactor</label>
+              <div class="relative">
+                <div class="flex items-center gap-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition bg-white">
+                  <input
+                    type="text"
+                    class="flex-1 outline-none bg-transparent text-gray-900 placeholder:text-gray-400 min-w-0"
+                    placeholder="Buscar equipo..."
+                    value={teamQuery()}
+                    onInput={(e) => {
+                      setTeamQuery(e.currentTarget.value);
+                      ctrl.setForm('htTeamId', null);
+                      setComboOpen(true);
+                    }}
+                    onFocus={() => setComboOpen(true)}
+                    onBlur={() => {
+                      // delay so click on option registers first
+                      setTimeout(() => setComboOpen(false), 150);
+                    }}
+                  />
+                  <Show when={ctrl.form.htTeamId !== null || teamQuery()}>
+                    <button
+                      type="button"
+                      onClick={clearTeam}
+                      class="shrink-0 text-gray-300 hover:text-gray-500 transition-colors"
+                      tabIndex={-1}
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </Show>
+                </div>
+
+                {/* Dropdown */}
+                <Show when={comboOpen() && filteredTeams().length > 0}>
+                  <ul
+                    class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto py-1"
+                  >
+                    <Show when={teamQuery().trim() === ''}>
+                      <li
+                        class="px-3 py-2 text-sm text-gray-400 cursor-pointer hover:bg-gray-50"
+                        onMouseDown={() => clearTeam()}
+                      >
+                        — Ninguno —
+                      </li>
+                    </Show>
+                    <For each={filteredTeams()}>
+                      {(team) => (
+                        <li
+                          class={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+                            ctrl.form.htTeamId === team.htTeamId
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-gray-800 hover:bg-gray-50'
+                          }`}
+                          onMouseDown={() => selectTeam(team.htTeamId, team.name)}
+                        >
+                          {team.name}
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </Show>
+
+                {/* No results */}
+                <Show when={comboOpen() && teamQuery().trim() !== '' && filteredTeams().length === 0}>
+                  <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400">
+                    Sin resultados
+                  </div>
+                </Show>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">Equipo del que este usuario puede escribir notas de prensa.</p>
             </div>
 
             <Show when={ctrl.form.error}>

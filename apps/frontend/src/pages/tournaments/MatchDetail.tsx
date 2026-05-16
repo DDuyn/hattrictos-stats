@@ -1,7 +1,7 @@
 import { For, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { onMount } from 'solid-js';
-import { A, useParams } from '@solidjs/router';
+import { A, useNavigate, useParams } from '@solidjs/router';
 import {
   tournamentsApi,
   type MatchDetail,
@@ -81,12 +81,18 @@ function GoalTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
         {(ev) => {
           const isHome = ev.subjectTeamId === props.homeTeamId;
           const name = ev.subjectPlayerName ?? `#${ev.subjectPlayerId}`;
+          const playerLink = ev.subjectPlayerId !== null
+            ? `/jugadores/${ev.subjectPlayerId}`
+            : null;
+          const nameNode = playerLink
+            ? <A href={playerLink} class="hover:text-primary transition-colors">{name}</A>
+            : <span>{name}</span>;
           return (
             <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-4 py-2.5">
               {/* Home column */}
               <div class="flex items-center gap-2 justify-end min-w-0">
                 <Show when={isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate text-right">{name}</span>
+                  <span class="text-sm font-medium text-gray-900 truncate text-right">{nameNode}</span>
                 </Show>
               </div>
               {/* Minute — always centered */}
@@ -94,7 +100,7 @@ function GoalTimeline(props: { events: MatchEvent[]; homeTeamId: number }) {
               {/* Away column */}
               <div class="flex items-center gap-2 justify-start min-w-0">
                 <Show when={!isHome}>
-                  <span class="text-sm font-medium text-gray-900 truncate">{name}</span>
+                  <span class="text-sm font-medium text-gray-900 truncate">{nameNode}</span>
                 </Show>
               </div>
             </div>
@@ -161,7 +167,9 @@ function LineupTable(props: {
                     </Show>
                   </td>
                   <td class="px-3 py-2.5 font-medium text-gray-900">
-                    {p.playerName}
+                    <A href={`/jugadores/${p.htPlayerId}`} class="hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                      {p.playerName}
+                    </A>
                     <Show when={p.minuteOut !== null}>
                       <span class="text-xs text-gray-400 ml-1.5">↓{p.minuteOut}'</span>
                     </Show>
@@ -192,7 +200,9 @@ function LineupTable(props: {
                       </span>
                     </td>
                     <td class="px-3 py-2.5 font-medium text-gray-900">
-                      {p.playerName}
+                      <A href={`/jugadores/${p.htPlayerId}`} class="hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                        {p.playerName}
+                      </A>
                       <For each={bookingsFor(p.htPlayerId)}>
                         {(b) => <CardBadge bookingType={b.bookingType} minute={b.minute} isYellowRed={b.isYellowRed} />}
                       </For>
@@ -222,6 +232,7 @@ function LineupTable(props: {
 
 export default function MatchDetailPage() {
   const ctrl = createMatchDetailCtrl();
+  const navigate = useNavigate();
 
   return (
     <Show
@@ -245,12 +256,22 @@ export default function MatchDetailPage() {
               {/* Breadcrumb */}
               <div class="mb-8">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    class="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                    aria-label="Volver atrás"
+                  >
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
                   <A href="/torneos" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                    Torneos
+                    Competiciones
                   </A>
                   <span class="text-gray-300">/</span>
-                  <A href={`/torneos/${ctrl.params.id}`} class="text-sm text-gray-400 hover:text-gray-600 transition-colors max-w-[12rem] truncate">
-                    Torneo
+                  <A href={`/torneos/${ctrl.params.id}`} class="text-sm text-gray-400 hover:text-gray-600 transition-colors max-w-[14rem] truncate">
+                    {m.tournamentName || 'Competición'}
                   </A>
                   <span class="text-gray-300">/</span>
                   <span class="text-sm text-gray-600">Jornada {m.round}</span>
@@ -265,11 +286,23 @@ export default function MatchDetailPage() {
                   </span>
                 </div>
                 <div class="flex items-center justify-between px-6 py-8 gap-4">
-                  <div class="flex-1 text-right">
-                    <p class={`text-lg font-semibold leading-tight ${finished && m.homeGoals! > m.awayGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
-                      {m.homeTeamName}
+                  {/* Home team */}
+                  <div class="flex-1 flex items-center justify-end gap-3 text-right min-w-0">
+                    <p class={`text-lg font-semibold leading-tight truncate ${finished && m.homeGoals! > m.awayGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
+                      <A href={`/equipos/${m.homeTeamId}`} class="hover:text-primary transition-colors">
+                        {m.homeTeamName}
+                      </A>
                     </p>
+                    <Show when={m.homeTeamLogo}>
+                      <img
+                        src={m.homeTeamLogo!}
+                        alt={m.homeTeamName}
+                        class="w-10 h-10 object-contain shrink-0"
+                      />
+                    </Show>
                   </div>
+
+                  {/* Score */}
                   <div class="shrink-0 flex items-center gap-3 px-4">
                     <Show
                       when={finished}
@@ -280,9 +313,20 @@ export default function MatchDetailPage() {
                       <span class="text-4xl font-bold text-gray-900 tabular-nums">{m.awayGoals}</span>
                     </Show>
                   </div>
-                  <div class="flex-1">
-                    <p class={`text-lg font-semibold leading-tight ${finished && m.awayGoals! > m.homeGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
-                      {m.awayTeamName}
+
+                  {/* Away team */}
+                  <div class="flex-1 flex items-center justify-start gap-3 min-w-0">
+                    <Show when={m.awayTeamLogo}>
+                      <img
+                        src={m.awayTeamLogo!}
+                        alt={m.awayTeamName}
+                        class="w-10 h-10 object-contain shrink-0"
+                      />
+                    </Show>
+                    <p class={`text-lg font-semibold leading-tight truncate ${finished && m.awayGoals! > m.homeGoals! ? 'text-gray-900' : 'text-gray-600'}`}>
+                      <A href={`/equipos/${m.awayTeamId}`} class="hover:text-primary transition-colors">
+                        {m.awayTeamName}
+                      </A>
                     </p>
                   </div>
                 </div>

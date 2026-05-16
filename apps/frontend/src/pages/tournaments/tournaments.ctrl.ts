@@ -125,3 +125,36 @@ export function getNextRound(matches: TournamentMatch[]): number | null {
   }
   return null;
 }
+
+// ─── Recent form ──────────────────────────────────────────────────────────────
+
+export type FormResult = 'W' | 'D' | 'L';
+
+/**
+ * Returns the last `count` results (oldest → newest, left → right) for a team.
+ * Only considers Finished matches. Returns an empty array if none played yet.
+ */
+export function getTeamRecentForm(
+  matches: TournamentMatch[],
+  htTeamId: number,
+  count = 5,
+): FormResult[] {
+  const finished = matches
+    .filter(
+      (m) =>
+        m.status.toLowerCase() === 'finished' &&
+        (m.homeTeamId === htTeamId || m.awayTeamId === htTeamId),
+    )
+    .sort((a, b) => b.round - a.round)   // newest first
+    .slice(0, count);                     // take last N
+
+  // reverse so oldest is on the left
+  return finished.reverse().map((m) => {
+    const isHome = m.homeTeamId === htTeamId;
+    const gf = isHome ? m.homeGoals! : m.awayGoals!;
+    const ga = isHome ? m.awayGoals! : m.homeGoals!;
+    if (gf > ga) return 'W';
+    if (gf === ga) return 'D';
+    return 'L';
+  });
+}

@@ -7,6 +7,7 @@ export interface UserProps {
   name: string;
   passwordHash: string;
   role: UserRole | null;
+  htTeamId: number | null;
   createdAt: Date;
 }
 
@@ -16,6 +17,7 @@ export class User {
   readonly name: string;
   readonly passwordHash: string;
   readonly role: UserRole | null;
+  readonly htTeamId: number | null;
   readonly createdAt: Date;
 
   private constructor(props: UserProps) {
@@ -24,6 +26,7 @@ export class User {
     this.name = props.name;
     this.passwordHash = props.passwordHash;
     this.role = props.role;
+    this.htTeamId = props.htTeamId;
     this.createdAt = props.createdAt;
   }
 
@@ -47,6 +50,7 @@ export class User {
       email: this.email,
       name: this.name,
       role: this.role,
+      htTeamId: this.htTeamId,
     };
   }
 }

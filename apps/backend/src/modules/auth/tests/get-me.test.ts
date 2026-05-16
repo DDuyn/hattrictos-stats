@@ -10,6 +10,7 @@ const mockUser = User.fromPersistence({
   name: 'Test User',
   passwordHash: 'hash',
   role: null,
+  htTeamId: null,
   createdAt: new Date(),
 });
 

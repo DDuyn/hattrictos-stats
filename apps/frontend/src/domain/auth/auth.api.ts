@@ -1,7 +1,15 @@
 import { request } from '../../lib/api-client';
-import type { AuthResponse, LoginInput, CreateUserInput, CreateUserResponse, ChangePasswordInput } from '@hattrictos-stats/shared';
+import type { AuthResponse, LoginInput, CreateUserInput, CreateUserResponse, ChangePasswordInput, UpdateUserInput } from '@hattrictos-stats/shared';
 
 export type UserProfile = AuthResponse['user'];
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  name: string;
+  role: string | null;
+  htTeamId: number | null;
+}
 
 export const authApi = {
   login: (data: LoginInput) =>
@@ -13,6 +21,12 @@ export const authApi = {
   createUser: (data: CreateUserInput) =>
     request<CreateUserResponse>('/admin/users', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  listUsers: () => request<UserListItem[]>('/admin/users'),
+  updateUser: (id: string, data: UpdateUserInput) =>
+    request<UserListItem>(`/admin/users/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
   changePassword: (data: ChangePasswordInput) =>

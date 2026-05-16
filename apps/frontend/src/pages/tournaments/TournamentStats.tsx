@@ -1,5 +1,5 @@
 import { For, Show } from 'solid-js';
-import { A, useParams } from '@solidjs/router';
+import { A, useNavigate, useParams } from '@solidjs/router';
 import { createStore } from 'solid-js/store';
 import { onMount } from 'solid-js';
 import { tournamentsApi, type TournamentDetail, type TopMinutes, type TopCard } from '../../domain/tournaments/tournaments.api';
@@ -30,6 +30,7 @@ function createTournamentStatsCtrl() {
 
 export default function TournamentStats() {
   const ctrl = createTournamentStatsCtrl();
+  const navigate = useNavigate();
 
   return (
     <Show
@@ -55,8 +56,18 @@ export default function TournamentStats() {
               {/* Breadcrumb + header */}
               <div class="mb-8">
                 <div class="flex items-center gap-2 mb-1">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    class="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                    aria-label="Volver atrás"
+                  >
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
                   <A href="/torneos" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                    Torneos
+                    Competiciones
                   </A>
                   <span class="text-gray-300">/</span>
                   <A href={`/torneos/${t.id}`} class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
@@ -104,8 +115,16 @@ export default function TournamentStats() {
                             {(scorer, i) => (
                               <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
-                                <td class="px-4 py-2.5 font-medium text-gray-900">{scorer.playerName}</td>
-                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{scorer.teamName}</td>
+                                 <td class="px-4 py-2.5 font-medium text-gray-900">
+                                   <A href={`/jugadores/${scorer.htPlayerId}`} class="hover:text-primary transition-colors">
+                                     {scorer.playerName}
+                                   </A>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">
+                                   <A href={`/equipos/${scorer.htTeamId}`} class="hover:text-primary transition-colors">
+                                     {scorer.teamName}
+                                   </A>
+                                 </td>
                                 <td class="px-4 py-2.5 text-right font-bold text-gray-900">{scorer.goals}</td>
                               </tr>
                             )}
@@ -143,10 +162,18 @@ export default function TournamentStats() {
                             {(row: TopMinutes, i) => (
                               <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
-                                <td class="px-4 py-2.5 font-medium text-gray-900">{row.playerName}</td>
-                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
-                                <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.appearances}</td>
-                                <td class="px-4 py-2.5 text-right font-bold text-gray-900">{row.minutes}'</td>
+                                 <td class="px-4 py-2.5 font-medium text-gray-900">
+                                   <A href={`/jugadores/${row.htPlayerId}`} class="hover:text-primary transition-colors">
+                                     {row.playerName}
+                                   </A>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">
+                                   <A href={`/equipos/${row.htTeamId}`} class="hover:text-primary transition-colors">
+                                     {row.teamName}
+                                   </A>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.appearances}</td>
+                                 <td class="px-4 py-2.5 text-right font-bold text-gray-900">{row.minutes}'</td>
                               </tr>
                             )}
                           </For>
@@ -183,10 +210,18 @@ export default function TournamentStats() {
                           <For each={topCards}>
                             {(row: TopCard, i) => (
                               <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                                <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
-                                <td class="px-4 py-2.5 font-medium text-gray-900">{row.playerName}</td>
-                                <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">{row.teamName}</td>
-                                <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.yellowCards || '-'}</td>
+                                 <td class="px-4 py-2.5 text-gray-400 text-xs font-mono">{i() + 1}</td>
+                                  <td class="px-4 py-2.5 font-medium text-gray-900">
+                                   <A href={`/jugadores/${row.htPlayerId}`} class="hover:text-primary transition-colors">
+                                     {row.playerName}
+                                   </A>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-gray-500 text-sm hidden sm:table-cell">
+                                   <A href={`/equipos/${row.htTeamId}`} class="hover:text-primary transition-colors">
+                                     {row.teamName}
+                                   </A>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.yellowCards || '-'}</td>
                                 <td class="px-4 py-2.5 text-center text-gray-500 hidden md:table-cell">{row.yellowRedCards || '-'}</td>
                                 <td class="px-4 py-2.5 text-center font-bold text-gray-900">{row.redCards || '-'}</td>
                               </tr>

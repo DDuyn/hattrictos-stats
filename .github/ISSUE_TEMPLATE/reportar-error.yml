@@ -1,0 +1,51 @@
+name: Reportar error
+description: Informa de un error en los datos, la web o las plantillas de HattrickOS Stats.
+title: "[Error] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportar un error.
+        Cuanto más detalle nos des, antes podremos solucionarlo.
+
+  - type: dropdown
+    id: error_type
+    attributes:
+      label: Tipo de error
+      options:
+        - Datos incorrectos (resultado, clasificación, estadística...)
+        - Error en la web (página no carga, botón roto, diseño roto...)
+        - Nota de prensa con contenido incorrecto
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del error
+      description: ¿Qué está mal? Sé lo más específico posible.
+      placeholder: "Ej: El resultado del partido X aparece como 2-1 pero fue 1-2."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: ¿Cómo podemos ver el error nosotros?
+      placeholder: |
+        1. Ir a la página de torneos
+        2. Hacer clic en el torneo "..."
+        3. Ver la jornada X
+    validations:
+      required: false
+
+  - type: input
+    id: url
+    attributes:
+      label: URL donde ocurre (si aplica)
+      placeholder: https://hattrictos-stats.example.com/...
+    validations:
+      required: false

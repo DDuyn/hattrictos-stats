@@ -91,7 +91,13 @@ export interface MatchBooking {
 }
 
 export interface MatchDetail {
-  match: TournamentMatch & { homeTeamName: string; awayTeamName: string };
+  match: TournamentMatch & {
+    homeTeamName: string;
+    awayTeamName: string;
+    tournamentName: string;
+    homeTeamLogo: string | null;
+    awayTeamLogo: string | null;
+  };
   events: MatchEvent[];
   bookings: MatchBooking[];
   homeAppearances: MatchAppearance[];

@@ -50,6 +50,7 @@ export function createCreateUser(repository: AuthRepository): CreateUser {
       name,
       passwordHash,
       role: input.role ?? null,
+      htTeamId: input.htTeamId ?? null,
       createdAt: new Date(),
     });
 

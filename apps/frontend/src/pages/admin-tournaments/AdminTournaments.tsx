@@ -23,15 +23,15 @@ export default function AdminTournaments() {
   return (
     <>
       <div class="mb-8">
-        <h1 class="text-2xl font-semibold text-gray-900">Gestión de Torneos</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Gestión de Competiciones</h1>
         <p class="text-sm text-gray-500 mt-0.5">
-          Registra torneos de Hattrick Arena por su ID para sincronizar su clasificación y calendario.
+          Registra competiciones de Hattrick Arena por su ID para sincronizar su clasificación y calendario.
         </p>
       </div>
 
       {/* Register form */}
       <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-        <h2 class="text-base font-medium text-gray-900 mb-4">Añadir torneo</h2>
+        <h2 class="text-base font-medium text-gray-900 mb-4">Añadir competición</h2>
         <form onSubmit={ctrl.handleRegister} class="flex flex-col gap-3">
           <div class="flex gap-3">
             <div class="flex-1">
@@ -51,7 +51,7 @@ export default function AdminTournaments() {
               disabled={ctrl.state.registering}
               class="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
-              {ctrl.state.registering ? 'Registrando...' : 'Añadir torneo'}
+              {ctrl.state.registering ? 'Registrando...' : 'Añadir competición'}
             </button>
           </div>
           <Show when={ctrl.state.registerError}>
@@ -66,7 +66,7 @@ export default function AdminTournaments() {
 
       {/* Tournament list */}
       <div>
-        <h2 class="text-base font-medium text-gray-900 mb-4">Torneos registrados</h2>
+        <h2 class="text-base font-medium text-gray-900 mb-4">Competiciones registradas</h2>
 
         <Show
           when={!ctrl.state.loadingList}
@@ -80,7 +80,7 @@ export default function AdminTournaments() {
             when={ctrl.state.tournaments.length > 0}
             fallback={
               <div class="bg-white border border-gray-200 rounded-lg px-4 py-10 text-center text-sm text-gray-400">
-                No hay torneos registrados todavía. Añade el primero usando el formulario.
+                No hay competiciones registradas todavía. Añade la primera usando el formulario.
               </div>
             }
           >

@@ -15,3 +15,5 @@ export {
   playersTable,
   playerTeamHistoryTable,
 } from '../../modules/players/infrastructure/players.table';
+export { announcementsTable } from '../../modules/announcements/infrastructure/announcements.table';
+export { pressNotesTable } from '../../modules/press-notes/infrastructure/press-notes.table';

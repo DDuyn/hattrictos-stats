@@ -59,6 +59,9 @@ const envSchema = z.object({
         "CHPP_ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Generate with: openssl rand -hex 32",
     })
     .optional(),
+  // GitHub — for creating contact issues from the app
+  GITHUB_TOKEN: z.string().optional(),
+  GITHUB_REPO: z.string().optional(), // format: owner/repo
 });
 
 function loadEnv() {

@@ -28,5 +28,24 @@ export function createMockAuthRepository(users: User[] = []): AuthRepository {
     async updatePasswordHash(_id, _hash) {
       // no-op stub for unit tests
     },
+    async findAll() {
+      return Array.from(byId.values());
+    },
+    async update(id, fields) {
+      const user = byId.get(id);
+      if (!user) return;
+      // Reconstruct user with updated fields via fromPersistence
+      const updated = User.fromPersistence({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        passwordHash: user.passwordHash,
+        role: 'role' in fields ? (fields.role ?? null) : user.role,
+        htTeamId: 'htTeamId' in fields ? (fields.htTeamId ?? null) : user.htTeamId,
+        createdAt: user.createdAt,
+      });
+      byEmail.set(updated.email, updated);
+      byId.set(updated.id, updated);
+    },
   };
 }

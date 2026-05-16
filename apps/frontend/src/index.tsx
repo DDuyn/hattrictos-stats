@@ -13,6 +13,10 @@ import TournamentDetail from './pages/tournaments/TournamentDetail';
 import TournamentStats from './pages/tournaments/TournamentStats';
 import MatchDetailPage from './pages/tournaments/MatchDetail';
 import AdminTournaments from './pages/admin-tournaments/AdminTournaments';
+import AdminUsers from './pages/admin-users/AdminUsers';
+import TeamsListPage from './pages/teams/TeamsListPage';
+import TeamDetailPage from './pages/teams/TeamDetailPage';
+import PlayerDetailPage from './pages/players/PlayerDetailPage';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');
@@ -30,6 +34,10 @@ render(
           <Route path="/torneos/:id/estadisticas" component={TournamentStats} />
           <Route path="/torneos/:id/partidos/:matchId" component={MatchDetailPage} />
           <Route path="/admin/torneos" component={AdminTournaments} />
+          <Route path="/admin/usuarios" component={AdminUsers} />
+          <Route path="/equipos" component={TeamsListPage} />
+          <Route path="/equipos/:htTeamId" component={TeamDetailPage} />
+          <Route path="/jugadores/:htPlayerId" component={PlayerDetailPage} />
         </Router>
       </AuthProvider>
     </ToastProvider>

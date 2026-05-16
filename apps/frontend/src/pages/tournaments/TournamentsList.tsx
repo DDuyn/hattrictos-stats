@@ -8,9 +8,9 @@ export default function TournamentsList() {
   return (
     <>
       <div class="mb-8">
-        <h1 class="text-2xl font-semibold text-gray-900">Torneos</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Competiciones</h1>
         <p class="text-sm text-gray-500 mt-0.5">
-          Ligas y torneos de Hattrick Arena registrados en la comunidad
+          Ligas y competiciones de Hattrick Arena registradas en la comunidad
         </p>
       </div>
 
@@ -18,7 +18,7 @@ export default function TournamentsList() {
         when={!ctrl.state.loading}
         fallback={
           <div class="bg-white border border-gray-200 rounded-lg px-4 py-16 text-center text-sm text-gray-400">
-            Cargando torneos...
+            Cargando competiciones...
           </div>
         }
       >
@@ -32,7 +32,7 @@ export default function TournamentsList() {
           when={ctrl.state.tournaments.length > 0}
           fallback={
             <div class="bg-white border border-gray-200 rounded-lg px-4 py-16 text-center text-sm text-gray-400">
-              No hay torneos registrados todavía.
+              No hay competiciones registradas todavía.
             </div>
           }
         >

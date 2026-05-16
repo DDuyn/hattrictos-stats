@@ -32,6 +32,7 @@ describe('Register', () => {
       name: 'Existing',
       passwordHash: 'hash',
       role: null,
+      htTeamId: null,
       createdAt: new Date(),
     });
     const register = createRegister(createMockAuthRepository([existingUser]), JWT_SECRET);

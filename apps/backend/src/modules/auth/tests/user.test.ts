@@ -10,6 +10,7 @@ describe('User domain', () => {
       name: 'Test',
       passwordHash: 'hash',
       role: null,
+      htTeamId: null,
       createdAt: new Date(),
     });
     expect(isOk(result)).toBe(true);
@@ -22,6 +23,7 @@ describe('User domain', () => {
       name: 'Test',
       passwordHash: 'hash',
       role: null,
+      htTeamId: null,
       createdAt: new Date(),
     });
     expect(isErr(result)).toBe(true);
@@ -34,6 +36,7 @@ describe('User domain', () => {
       name: '  ',
       passwordHash: 'hash',
       role: null,
+      htTeamId: null,
       createdAt: new Date(),
     });
     expect(isErr(result)).toBe(true);
@@ -46,10 +49,11 @@ describe('User domain', () => {
       name: 'Test',
       passwordHash: 'hash',
       role: null,
+      htTeamId: null,
       createdAt: new Date(),
     });
     const response = user.toResponse();
-    expect(response).toEqual({ id: '1', email: 'test@example.com', name: 'Test', role: null });
+    expect(response).toEqual({ id: '1', email: 'test@example.com', name: 'Test', role: null, htTeamId: null });
     expect((response as Record<string, unknown>).passwordHash).toBeUndefined();
   });
 });

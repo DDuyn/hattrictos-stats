@@ -8,6 +8,8 @@ export const usersTable = sqliteTable('users', {
   name: text('name').notNull(),
   passwordHash: text('password_hash').notNull(),
   role: text('role').$type<UserRole>(),
+  /** Hattrick team ID for which this user can write press notes (null = no team) */
+  htTeamId: integer('ht_team_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),

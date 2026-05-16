@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createUserInputSchema, type JwtPayload } from '@hattrictos-stats/shared';
+import { createUserInputSchema, updateUserInputSchema, type JwtPayload } from '@hattrictos-stats/shared';
 import { db } from '../../infrastructure/db/client';
 import { env } from '../../config/env';
 import { ownerGuard, ownerOrCoOwnerGuard } from '../../middleware/jwt';
@@ -21,6 +21,8 @@ import {
 } from './use-cases/explore-chpp';
 import { createAuthRepository } from '../auth/infrastructure/auth.repository';
 import { createCreateUser } from '../auth/use-cases/create-user';
+import { createListUsers } from '../auth/use-cases/list-users';
+import { createUpdateUser } from '../auth/use-cases/update-user';
 
 type Env = { Variables: { jwtPayload: JwtPayload } } & LoggerEnv;
 
@@ -56,6 +58,22 @@ const connectRateLimit = createRateLimit({
 // ─── User management ──────────────────────────────────────────────────────────
 
 /**
+ * GET /api/admin/users
+ *
+ * Returns a list of all registered users.
+ * Only owner or co_owner may call this endpoint.
+ */
+admin.get('/users', ownerOrCoOwnerGuard, async (c) => {
+  const repository = createAuthRepository(db);
+  const listUsers = createListUsers(repository);
+  const result = await listUsers();
+  if (!result.ok) {
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+  return c.json(result.value);
+});
+
+/**
  * POST /api/admin/users
  *
  * Creates a new user with a server-generated password.
@@ -80,6 +98,33 @@ admin.post('/users', ownerOrCoOwnerGuard, async (c) => {
     return c.json(result.error, errorToStatus(result.error.code));
   }
   return c.json(result.value, 201);
+});
+
+/**
+ * PATCH /api/admin/users/:id
+ *
+ * Updates a user's role and/or htTeamId.
+ * Only owner or co_owner may call this endpoint.
+ */
+admin.patch('/users/:id', ownerOrCoOwnerGuard, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const parsed = updateUserInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
+      400,
+    );
+  }
+
+  const repository = createAuthRepository(db);
+  const updateUser = createUpdateUser(repository);
+
+  const result = await updateUser(id, parsed.data);
+  if (!result.ok) {
+    return c.json(result.error, errorToStatus(result.error.code));
+  }
+  return c.json(result.value);
 });
 
 // ─── CHPP routes ──────────────────────────────────────────────────────────────

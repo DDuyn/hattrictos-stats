@@ -20,6 +20,7 @@ export {
   createUserInputSchema,
   createUserResponseSchema,
   changePasswordInputSchema,
+  updateUserInputSchema,
   userRoleSchema,
   type LoginInput,
   type RegisterInput,
@@ -27,6 +28,7 @@ export {
   type CreateUserInput,
   type CreateUserResponse,
   type ChangePasswordInput,
+  type UpdateUserInput,
 } from './schemas/auth.schema';
 
 export type { UserRole } from './types/index';
@@ -38,3 +40,12 @@ export {
   type PaginationInput,
   type PaginatedResponse,
 } from './schemas/common.schema';
+
+export {
+  contactRedactorSchema,
+  contactErrorSchema,
+  contactSchema,
+  type ContactRedactorInput,
+  type ContactErrorInput,
+  type ContactInput,
+} from './schemas/contact.schema';
